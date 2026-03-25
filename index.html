@@ -276,8 +276,27 @@ try{
       <button class="role-tab" id="tabS" onclick="setRole('student')">🎓 Student</button>
     </div>
     <div id="loginErr" class="login-err" style="display:none"></div>
-    <div class="lf" id="lfUsername" style="display:none"><label>Username</label><input id="lu" placeholder="e.g. ahmed" onkeydown="if(event.key==='Enter')doLogin()"/></div>
-    <div class="lf"><label>Password</label><input id="lp" type="password" placeholder="Enter teacher password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+
+    <!-- TEACHER FORM: password only -->
+    <div id="teacherForm">
+      <div class="lf">
+        <label>Password</label>
+        <input id="lp" type="password" placeholder="Enter teacher password" onkeydown="if(event.key==='Enter')doLogin()"/>
+      </div>
+    </div>
+
+    <!-- STUDENT FORM: username + password -->
+    <div id="studentForm" style="display:none">
+      <div class="lf">
+        <label>Username</label>
+        <input id="lu" placeholder="Enter your username" onkeydown="if(event.key==='Enter')doLogin()"/>
+      </div>
+      <div class="lf">
+        <label>Password</label>
+        <input id="lsp" type="password" placeholder="Enter your password" onkeydown="if(event.key==='Enter')doLogin()"/>
+      </div>
+    </div>
+
     <button class="login-btn" onclick="doLogin()">Sign In</button>
     <div class="login-hint" id="loginHint">Password: <b>teacher123</b></div>
   </div>
@@ -626,28 +645,22 @@ function setRole(r){
   CR=r;
   document.getElementById('tabT').classList.toggle('active',r==='teacher');
   document.getElementById('tabS').classList.toggle('active',r==='student');
-  // Teacher: hide username, show only password
-  const lfU=document.getElementById('lfUsername');
-  if(r==='teacher'){
-    lfU.style.display='none';
-    document.getElementById('lp').placeholder='Enter teacher password';
-    document.getElementById('loginHint').innerHTML='Password: <b>teacher123</b>';
-  } else {
-    lfU.style.display='block';
-    document.getElementById('lu').placeholder='e.g. ahmed';
-    document.getElementById('lp').placeholder='Enter password';
-    // Rebuild student hints from live accounts
-    updateLoginHint();
-  }
+  document.getElementById('teacherForm').style.display = r==='teacher'?'block':'none';
+  document.getElementById('studentForm').style.display = r==='student'?'block':'none';
+  document.getElementById('loginHint').innerHTML = r==='teacher'?'Password: <b>teacher123</b>':'';
   document.getElementById('loginErr').style.display='none';
+  // Focus correct field
+  if(r==='teacher') document.getElementById('lp').focus();
+  else document.getElementById('lu').focus();
 }
 async function doLogin(){
-  const p = document.getElementById('lp').value.trim();
   const errEl = document.getElementById('loginErr');
   errEl.style.display = 'none';
 
   // ── TEACHER LOGIN (password only) ──
   if(CR === 'teacher'){
+    const p = document.getElementById('lp').value.trim();
+    if(!p){ errEl.style.display='block'; errEl.textContent='Please enter your password.'; return; }
     if(p === 'teacher123'){
       CU = {role:'teacher', name:'Ms. Johnson'};
       if(FB_READY){
@@ -666,8 +679,9 @@ async function doLogin(){
     return;
   }
 
-  // ── STUDENT LOGIN ──
+  // ── STUDENT LOGIN (username + password) ──
   const username = document.getElementById('lu').value.trim().toLowerCase();
+  const p = document.getElementById('lsp').value.trim();
   if(!username || !p){
     errEl.style.display = 'block';
     errEl.textContent = 'Please enter both username and password.';
@@ -675,7 +689,6 @@ async function doLogin(){
   }
 
   if(FB_READY){
-    // ── Firebase mode ──
     showLoginLoading('Signing in...');
     try{
       const email = username + '@wordclassroom.app';
@@ -684,7 +697,6 @@ async function doLogin(){
       const snap = await fbDb.collection('profiles').doc(uid).get();
       if(!snap.exists) throw new Error('Profile not found');
       const profile = snap.data();
-      // Load tasks first, then progress
       await fbLoadAllTasks();
       await fbLoadStudentProgress(uid);
       hideLoginLoading();
@@ -696,9 +708,8 @@ async function doLogin(){
       errEl.textContent = 'Invalid username or password.';
       console.warn('Student login error:', e.message);
     }
-
   } else {
-    // ── Local demo mode ──
+    // Local demo mode
     const acc = userAccounts.find(a => a.email === username && a.password === p);
     if(!acc){
       errEl.style.display = 'block';
@@ -726,15 +737,13 @@ function hideLoginLoading(){
 async function doLogout(){
   CU=null;
   if(FB_READY && fbAuth.currentUser) await fbAuth.signOut();
-  document.getElementById('lu').value='';
+  // Clear all fields
   document.getElementById('lp').value='';
+  document.getElementById('lu').value='';
+  document.getElementById('lsp').value='';
   document.getElementById('loginErr').style.display='none';
-  CR='student';
-  document.getElementById('tabT').classList.remove('active');
-  document.getElementById('tabS').classList.add('active');
-  document.getElementById('lfUsername').style.display='block';
-  document.getElementById('lp').placeholder='Enter password';
-  updateLoginHint();
+  // Always return to Teacher tab on logout
+  setRole('teacher');
   showSc('loginScreen');
 }
 function showSc(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
@@ -2361,11 +2370,8 @@ async function fbCreateStudent(name,cls,username,password,av,col){
     // Sign back out (student) — teacher needs to re-login
     await fbAuth.signOut();
     alert('✅ Student "'+name+'" created in Firebase!\n\nIMPORTANT: You have been signed out.\nPlease log back in as teacher.');
+    setRole('teacher');
     showSc('loginScreen');
-    CR='teacher';
-    document.getElementById('tabT').classList.add('active');
-    document.getElementById('tabS').classList.remove('active');
-    document.getElementById('lfUsername').style.display='none';
   }catch(e){
     console.warn('fbCreateStudent error:',e);
     if(e.code==='auth/email-already-in-use'){
