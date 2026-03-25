@@ -1129,11 +1129,16 @@ function rExport(){
 // =============================================
 // STUDENT DASHBOARD
 // =============================================
-function openS(){
+async function openS(){
   seedTaskProgress();
   // Use String comparison so numeric IDs and Firebase string UIDs both match
   const st = students.find(s => String(s.id) === String(CU.sid));
   if(!st){ console.warn('openS: student not found for sid', CU.sid); return; }
+  // Always reload latest progress from Firebase (gets latest feedback/scores/rewards)
+  if(FB_READY && CU.fbId){
+    try{ await fbLoadStudentProgress(CU.fbId); }
+    catch(e){ console.warn('openS progress reload error:',e); }
+  }
   // Calculate real progress from taskProgress
   const myTps = tasks.map(t => tpGet(st.id, t.id));
   const totalProg = myTps.length
@@ -1292,19 +1297,44 @@ function openWordS(taskId){
   setupEditorEvents();rFbPanel(st);
   showSc('wordScreen');rTab('home',document.querySelector('.ribbon-tab'));
 }
-function openWord(sid, taskId){
+async function openWord(sid, taskId){
   const st=students.find(s=>String(s.id)===String(sid));
   const t=taskId?tasks.find(x=>String(x.id)===String(taskId)):tasks[0];
   if(!st||!t)return;
-  const tp=tpGet(st.id,t.id);
+  // Load latest progress from Firebase before opening
+  if(FB_READY){
+    try{
+      const key=String(sid)+'_'+String(t.id);
+      const snap=await fbDb.ref('progress/'+key).once('value');
+      if(snap.exists()){
+        const d=snap.val();
+        tpSet(String(sid),String(t.id),{
+          doc:       d.doc        || '',
+          status:    d.status     || 'not_started',
+          score:     d.score      ?? null,
+          feedback:  d.feedback   || '',
+          rewards:   d.rewards    || [],
+          time:      d.timeSpent  || 0,
+          prog:      d.progress   || 0,
+          submitted: d.submittedAt|| null
+        });
+      }
+    }catch(e){console.warn('Load student progress error:',e);}
+  }
+  const tp=tpGet(String(st.id),String(t.id));
   currTask=t;currSt=st;wMode='teacher';
   document.getElementById('wTitle').textContent=st.name+' – '+t.title;
   document.getElementById('wRole').textContent='Teacher Reviewing: '+st.name+' | '+bdgText(tp.status);
   document.getElementById('submitBtn').style.display='none';
-  // Add Save Template button for teacher
   const sbr=document.querySelector('.sbr');
   const oldSab=document.getElementById('saveAssignBtn');if(oldSab)oldSab.remove();
-  if(sbr){const sb=document.createElement('button');sb.id='saveAssignBtn';sb.className='btn btn-green btn-sm';sb.textContent='💾 Save Feedback';sb.onclick=()=>{autoSave();showSaveIndicator();};sbr.insertBefore(sb,sbr.firstChild);}
+  if(sbr){
+    const sb=document.createElement('button');
+    sb.id='saveAssignBtn';sb.className='btn btn-green btn-sm';
+    sb.textContent='💾 Save Feedback';
+    sb.onclick=()=>{saveLivFb();};
+    sbr.insertBefore(sb,sbr.firstChild);
+  }
   cmts=[];
   document.getElementById('docEd').innerHTML=tp.doc||t.tpl||'';
   document.getElementById('docEd').contentEditable='true';
@@ -1380,7 +1410,7 @@ function rFbPanel(st){
 }
 function addLivFb(t){const el=document.getElementById('livFb');if(el)el.value=(el.value?el.value+'\n':'')+t;}
 function togLivR(el){el.style.opacity=parseFloat(el.style.opacity||1)>0.5?'0.3':'1';}
-function saveLivFb(){
+async function saveLivFb(){
   if(!currSt||!currTask)return;
   const sc=document.getElementById('livScore')?.value;
   const fb=document.getElementById('livFb')?.value;
@@ -1392,8 +1422,20 @@ function saveLivFb(){
   if(sc) update.score=+sc;
   if(fb) update.feedback=fb;
   if(rwds.length) update.rewards=rwds;
+  // Save locally
   tpSet(String(currSt.id), String(currTask.id), update);
   saveToStorage();
+  // Save to Firebase RTDB
+  if(FB_READY){
+    const key=String(currSt.id)+'_'+String(currTask.id);
+    const fbUpdate={studentId:String(currSt.id), taskId:String(currTask.id), updatedAt:Date.now()};
+    if(sc) fbUpdate.score=+sc;
+    if(fb) fbUpdate.feedback=fb;
+    if(rwds.length) fbUpdate.rewards=rwds;
+    try{
+      await fbDb.ref('progress/'+key).update(fbUpdate);
+    }catch(e){console.warn('Firebase feedback save error:',e);}
+  }
   showSaveIndicator();
   alert('✅ Feedback saved for '+currSt.name);
 }
@@ -1416,10 +1458,13 @@ async function autoSave(){
     if(FB_READY&&CU.fbId){
       try{
         await fbDb.ref('progress/'+String(CU.fbId)+'_'+String(currTask.id)).update({
-          studentId:String(CU.fbId), taskId:String(currTask.id),
-          doc:html, status:tp.status==='not_started'?'in_progress':tp.status,
-          progress:newProg, timeSpent:(tp.time||0)+1,
-          updatedAt:Date.now()
+          studentId: String(CU.fbId),
+          taskId:    String(currTask.id),
+          doc:       html,
+          status:    tp.status==='not_started'?'in_progress':tp.status,
+          progress:  newProg,
+          timeSpent: (tp.time||0)+1,
+          updatedAt: Date.now()
         });
       }catch(e){console.warn('AutoSave error:',e);}
     }
@@ -1448,12 +1493,21 @@ async function submitWork(){
   saveToStorage();
   if(FB_READY&&CU.fbId){
     try{
-      await fbDb.ref('progress/'+String(CU.fbId)+'_'+String(currTask.id)).update({
-        studentId:String(CU.fbId), taskId:String(currTask.id),
-        doc:html, status:'submitted', progress:100,
+      const tp=tpGet(String(CU.sid),String(currTask.id));
+      await fbDb.ref('progress/'+String(CU.fbId)+'_'+String(currTask.id)).set({
+        studentId:  String(CU.fbId),
+        taskId:     String(currTask.id),
+        doc:        html,
+        status:     'submitted',
+        progress:   100,
         submittedAt:today,
-        updatedAt:Date.now()
+        score:      tp.score    ?? null,
+        feedback:   tp.feedback || '',
+        rewards:    tp.rewards  || [],
+        timeSpent:  tp.time     || 0,
+        updatedAt:  Date.now()
       });
+      console.log('✅ Submitted work saved to Firebase');
     }catch(e){console.warn('Submit save error:',e);}
   }
   document.getElementById('docEd').contentEditable='false';
@@ -2133,15 +2187,28 @@ function openFb(sid, taskId){
 }
 function apFb(t){const el=document.getElementById('mFbText');el.value=(el.value?el.value+'\n':'')+t;}
 function togR(el){el.classList.toggle('sel');const r=el.dataset.r;selR=el.classList.contains('sel')?[...selR,r]:selR.filter(x=>x!==r);}
-function saveFb(){
-  const st=students.find(s=>s.id===fbSid);if(!st)return;
+async function saveFb(){
+  const st=students.find(s=>String(s.id)===String(fbSid));if(!st)return;
   const sc=document.getElementById('mFbScore').value;
   const fb=document.getElementById('mFbText').value;
   const update={rewards:selR};
   if(sc) update.score=+sc;
   if(fb) update.feedback=fb;
+  // Save locally
   tpSet(String(fbSid), String(fbTaskId), update);
   saveToStorage();
+  // Save to Firebase RTDB
+  if(FB_READY){
+    const key=String(fbSid)+'_'+String(fbTaskId);
+    const fbUpdate={studentId:String(fbSid), taskId:String(fbTaskId),
+      rewards:selR, updatedAt:Date.now()};
+    if(sc) fbUpdate.score=+sc;
+    if(fb) fbUpdate.feedback=fb;
+    try{
+      await fbDb.ref('progress/'+key).update(fbUpdate);
+      console.log('✅ Feedback saved to Firebase for',st.name);
+    }catch(e){console.warn('Firebase feedback save error:',e);}
+  }
   closeM('mFeedback');
   const title=document.getElementById('tTabTitle').textContent;
   tTab(title.includes('Student')?'students':'overview',null);
@@ -2342,17 +2409,21 @@ async function fbLoadAllStudents(){
       }
     });
     if(rtStudents.length){ students=rtStudents; userAccounts=rtAccounts; }
-    // Load all progress
+    // Load all progress (includes submitted docs, feedback, scores, rewards)
     const progSnap = await fbDb.ref('progress').once('value');
     if(progSnap.exists()){
       progSnap.forEach(child=>{
         const d=child.val();
         if(d.studentId&&d.taskId){
-          tpSet(String(d.studentId),String(d.taskId),{
-            doc:d.doc||'', status:d.status||'not_started',
-            score:d.score??null, feedback:d.feedback||'',
-            rewards:d.rewards||[], time:d.timeSpent||0,
-            prog:d.progress||0, submitted:d.submittedAt||null
+          tpSet(String(d.studentId), String(d.taskId), {
+            doc:       d.doc        || '',
+            status:    d.status     || 'not_started',
+            score:     d.score      ?? null,
+            feedback:  d.feedback   || '',
+            rewards:   d.rewards    || [],
+            time:      d.timeSpent  || 0,
+            prog:      d.progress   || 0,
+            submitted: d.submittedAt|| null
           });
         }
       });
@@ -2377,18 +2448,23 @@ async function fbLoadAllTasks(){
   }catch(e){console.warn('fbLoadAllTasks error:',e);}
 }
 
-// Load one student's progress from RTDB
+// Load one student's progress from RTDB — all fields including feedback/score/rewards
 async function fbLoadStudentProgress(uid){
   try{
     const snap = await fbDb.ref('progress').orderByChild('studentId').equalTo(uid).once('value');
     if(!snap.exists()) return;
     snap.forEach(child=>{
       const d=child.val();
-      if(d.taskId) tpSet(uid,String(d.taskId),{
-        doc:d.doc||'', status:d.status||'not_started',
-        score:d.score??null, feedback:d.feedback||'',
-        rewards:d.rewards||[], time:d.timeSpent||0,
-        prog:d.progress||0, submitted:d.submittedAt||null
+      if(!d.taskId) return;
+      tpSet(String(uid), String(d.taskId), {
+        doc:       d.doc        || '',
+        status:    d.status     || 'not_started',
+        score:     d.score      ?? null,
+        feedback:  d.feedback   || '',
+        rewards:   d.rewards    || [],
+        time:      d.timeSpent  || 0,
+        prog:      d.progress   || 0,
+        submitted: d.submittedAt|| null
       });
     });
   }catch(e){console.warn('fbLoadStudentProgress error:',e);}
