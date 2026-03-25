@@ -219,6 +219,38 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f0f0;overflow:hidden;height
   .sidepanel{width:260px}
 }
 </style>
+<!-- ======================================================
+     FIREBASE INTEGRATION
+     Replace the 6 values below with YOUR Firebase project config
+     (from Firebase Console → Project Settings → Your Apps → Config)
+     ====================================================== -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+// ▼▼▼ PASTE YOUR FIREBASE CONFIG HERE ▼▼▼
+const firebaseConfig = {
+  apiKey:            "AIzaSyBMcVWb_lf5AQsTy0hQXqGGAewzereQuoU",
+  authDomain:        "word-classroom.firebaseapp.com",
+  projectId:         "word-classroom",
+  storageBucket:     "word-classroom.firebasestorage.app",
+  messagingSenderId: "234162036137",
+  appId:             "1:234162036137:web:efba9bc9e7de31b3a2b8b8"
+};
+// ▲▲▲ END OF CONFIG ▲▲▲
+
+// Check if config has been filled in
+const FB_READY = !firebaseConfig.apiKey.includes('PASTE');
+let fbAuth = null, fbDb = null;
+if(FB_READY){
+  firebase.initializeApp(firebaseConfig);
+  fbAuth = firebase.auth();
+  fbDb   = firebase.firestore();
+  console.log('✅ Firebase connected');
+} else {
+  console.warn('⚠️ Firebase not configured — running in local demo mode');
+}
+</script>
 </head>
 <body>
 
@@ -559,32 +591,74 @@ function setRole(r){
   }
   document.getElementById('loginErr').style.display='none';
 }
-function doLogin(){
-  const p=document.getElementById('lp').value;
+async function doLogin(){
+  const p=document.getElementById('lp').value.trim();
   const errEl=document.getElementById('loginErr');
+  errEl.style.display='none';
+
+  // ── TEACHER LOGIN ──
   if(CR==='teacher'){
     if(p==='teacher123'){
-      errEl.style.display='none';
       CU={role:'teacher',name:'Ms. Johnson'};
+      if(FB_READY){
+        showLoginLoading('Loading students and tasks...');
+        await fbLoadAllStudents();
+        await fbLoadAllTasks();
+        hideLoginLoading();
+      }
       openT();
-      return;
+    } else {
+      errEl.style.display='block';
+      errEl.textContent='Incorrect password. Please try again.';
     }
-    errEl.style.display='block';
-    errEl.textContent='Incorrect password. Please try again.';
     return;
   }
-  // Student login
-  const e=document.getElementById('lu').value.trim().toLowerCase();
-  const acc=userAccounts.find(a=>a.email===e&&a.password===p);
-  if(!acc){errEl.style.display='block';errEl.textContent='Invalid username or password.';return;}
-  const st=students.find(s=>s.id===acc.sid);
-  if(!st){errEl.style.display='block';errEl.textContent='Student account not found.';return;}
-  errEl.style.display='none';
-  CU={role:'student',name:st.name,sid:st.id};
-  openS();
+
+  // ── STUDENT LOGIN ──
+  const username=document.getElementById('lu').value.trim().toLowerCase();
+  if(!username||!p){errEl.style.display='block';errEl.textContent='Please enter username and password.';return;}
+
+  if(FB_READY){
+    // Firebase auth login
+    showLoginLoading('Signing in...');
+    try{
+      const email=username+'@wordclassroom.app';
+      const cred=await fbAuth.signInWithEmailAndPassword(email,p);
+      const uid=cred.user.uid;
+      const snap=await fbDb.collection('profiles').doc(uid).get();
+      if(!snap.exists){throw new Error('Profile not found');}
+      const profile=snap.data();
+      await fbLoadAllTasks();
+      await fbLoadStudentProgress(uid);
+      hideLoginLoading();
+      CU={role:'student',name:profile.name,sid:uid,fbId:uid};
+      openS();
+    }catch(e){
+      hideLoginLoading();
+      errEl.style.display='block';
+      errEl.textContent='Invalid username or password.';
+    }
+  } else {
+    // Local demo mode fallback
+    const acc=userAccounts.find(a=>a.email===username&&a.password===p);
+    if(!acc){errEl.style.display='block';errEl.textContent='Invalid username or password.';return;}
+    const st=students.find(s=>s.id===acc.sid);
+    if(!st){errEl.style.display='block';errEl.textContent='Student account not found.';return;}
+    CU={role:'student',name:st.name,sid:st.id};
+    openS();
+  }
 }
-function doLogout(){
+function showLoginLoading(msg){
+  const btn=document.querySelector('.login-btn');
+  if(btn){btn.disabled=true;btn.textContent=msg||'Loading...';}
+}
+function hideLoginLoading(){
+  const btn=document.querySelector('.login-btn');
+  if(btn){btn.disabled=false;btn.textContent='Sign In';}
+}
+async function doLogout(){
   CU=null;
+  if(FB_READY && fbAuth.currentUser) await fbAuth.signOut();
   document.getElementById('lu').value='';
   document.getElementById('lp').value='';
   document.getElementById('loginErr').style.display='none';
@@ -739,24 +813,35 @@ function saveStudent(){
     // ── ADD new student ──
     const newId=nextSid++;
     const col=COLORS[newId%COLORS.length];
-    const newSt={id:newId,name,cls,av:name.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2),col,prog:0,status:'not_started',score:null,feedback:'',rewards:[],time:0,submitted:null,doc:''};
+    const av=name.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2);
+    const newSt={id:newId,name,cls,av,col,prog:0,status:'not_started',score:null,feedback:'',rewards:[],time:0,submitted:null,doc:''};
     students.push(newSt);
     userAccounts.push({sid:newId,email,password:pass});
-    // Seed task progress for new student so they appear in stats
     tasks.forEach(t=>tpSet(newId,t.id,{status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0}));
+    if(FB_READY){
+      // Create Firebase Auth + Firestore profile
+      fbCreateStudent(name,cls,email,pass,av,col).catch(e=>console.warn('FB create student:',e));
+    }
   }
   closeM('mStudent');
   refreshManage();
 }
-function deleteStudent(id){
+async function deleteStudent(id){
   const sid=+id;
   const st=students.find(s=>s.id===sid);
   if(!st){alert('Student not found.');return;}
   if(!confirm('Delete "'+st.name+'"? All their data will be removed permanently.'))return;
+  const acc=userAccounts.find(a=>a.sid===sid);
   students=students.filter(s=>s.id!==sid);
   userAccounts=userAccounts.filter(a=>a.sid!==sid);
-  // Clean up task progress
   delete taskProgress[sid];
+  if(FB_READY&&acc){
+    // Delete Firestore profile and progress docs
+    fbDb.collection('profiles').where('username','==',acc.email).get()
+      .then(snap=>snap.forEach(d=>d.ref.delete())).catch(()=>{});
+    const progSnap=await fbDb.collection('progress').where('studentId','==',String(sid)).get().catch(()=>null);
+    if(progSnap) progSnap.forEach(d=>d.ref.delete());
+  }
   refreshManage();
 }
 function updateLoginHint(){
@@ -820,12 +905,13 @@ function deleteTask(tid){
   const t=tasks.find(x=>x.id===tid);
   if(!t){alert('Task not found.');return;}
   if(!confirm('Delete "'+t.title+'"?\nThis will remove the task and all student progress for it.'))return;
-  // Remove from tasks array
   tasks=tasks.filter(x=>x.id!==tid);
-  // Remove task progress for all students
-  students.forEach(s=>{
-    if(taskProgress[s.id]) delete taskProgress[s.id][tid];
-  });
+  students.forEach(s=>{ if(taskProgress[s.id]) delete taskProgress[s.id][tid]; });
+  if(FB_READY){
+    fbDb.collection('tasks').doc(String(tid)).delete().catch(()=>{});
+    fbDb.collection('progress').where('taskId','==',tid).get()
+      .then(snap=>{const b=fbDb.batch();snap.forEach(d=>b.delete(d.ref));b.commit();}).catch(()=>{});
+  }
   // Re-render tasks tab
   const btn=[...document.querySelectorAll('#teacherScreen .nav-item')].find(b=>b.textContent.includes('Task'));
   document.querySelectorAll('#teacherScreen .nav-item').forEach(n=>n.classList.remove('active'));
@@ -1184,15 +1270,29 @@ function backFromWord(){
   if(CU.role==="teacher"){showSc("teacherScreen");tTab("create",[...document.querySelectorAll("#teacherScreen .nav-item")].find(b=>b.textContent.includes("Create")));}
   else{openS();}
 }
-function autoSave(){
+async function autoSave(){
   const html=document.getElementById("docEd").innerHTML;
   if(CU?.role==="student"&&currTask){
     const tp=tpGet(CU.sid,currTask.id);
     const newProg=Math.min((tp.prog||0)+3,95);
     tpSet(CU.sid,currTask.id,{doc:html,status:tp.status==='not_started'?'in_progress':tp.status,prog:newProg,time:(tp.time||0)+1});
+    showSaveIndicator();
+    if(FB_READY&&CU.fbId){
+      try{
+        await fbDb.collection('progress').doc(CU.fbId+'_'+currTask.id).set({
+          studentId:CU.fbId, taskId:currTask.id,
+          doc:html, status:tp.status==='not_started'?'in_progress':tp.status,
+          progress:newProg, timeSpent:(tp.time||0)+1,
+          updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+        },{merge:true});
+      }catch(e){console.warn('AutoSave error:',e);}
+    }
   } else if(CU?.role==="teacher"&&currTask){
     const t=tasks.find(x=>x.id===currTask.id);
-    if(t){t.tpl=html;showSaveIndicator();}
+    if(t){
+      t.tpl=html;showSaveIndicator();
+      if(FB_READY) fbDb.collection('tasks').doc(String(t.id)).update({template:html}).catch(()=>{});
+    }
     else if(currTask._isUploadPreview){currTask.tpl=html;if(uploadedDocData)uploadedDocData.html=html;showSaveIndicator();}
   }
 }
@@ -1203,20 +1303,28 @@ function showSaveIndicator(){
   setTimeout(()=>{el.textContent=prev;el.style.color="";},1500);
 }
 function trigAS(){clearTimeout(astimer);astimer=setTimeout(autoSave,2000);}
-function submitWork(){
+async function submitWork(){
   if(!confirm('Submit your work? You cannot edit after submission.'))return;
   if(!currTask)return;
   const html=document.getElementById('docEd').innerHTML;
   const today=new Date().toISOString().split('T')[0];
   tpSet(CU.sid,currTask.id,{doc:html,status:'submitted',prog:100,submitted:today});
+  if(FB_READY&&CU.fbId){
+    try{
+      await fbDb.collection('progress').doc(CU.fbId+'_'+currTask.id).set({
+        studentId:CU.fbId, taskId:currTask.id,
+        doc:html, status:'submitted', progress:100,
+        submittedAt:today,
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      },{merge:true});
+    }catch(e){console.warn('Submit save error:',e);}
+  }
   document.getElementById('docEd').contentEditable='false';
   document.getElementById('submitBtn').style.display='none';
-  // Remove save button if present
   const sab=document.getElementById('saveAssignBtn');if(sab)sab.remove();
-  // Go back to student dashboard and land on My Tasks tab
   document.getElementById('fbPanel').classList.remove('open');
   closeSP();
-  openS(); // re-renders dashboard with updated progress
+  openS();
   // Show a success banner
   setTimeout(()=>{
     const c=document.getElementById('sContent');
@@ -1858,8 +1966,14 @@ function doCreateTask(){
   if(!title){alert('Enter a title.');return;}
   const newT={id:tasks.length+1,title,due:document.getElementById('ntDue').value,to:document.getElementById('ntAssign').value,criteria:document.getElementById('ntCrit').value,tpl:document.getElementById('ntTpl').value||`<h2>${title}</h2><p><strong>Instructions:</strong> Complete this task as directed.</p><p><br/></p>`};
   tasks.push(newT);
-  // Seed task progress for all students
   students.forEach(s=>tpSet(s.id,newT.id,{status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0}));
+  if(FB_READY){
+    fbDb.collection('tasks').doc(String(newT.id)).set({
+      title:newT.title, dueDate:newT.due||'', assignedTo:newT.to||'all',
+      criteria:newT.criteria||'', template:newT.tpl||'', uploaded:false,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(e=>console.warn('Task save error:',e));
+  }
   closeM('mTask');tTab('tasks',null);alert('✅ Task "'+title+'" created!');
 }
 
@@ -2069,6 +2183,111 @@ function doCreateAndAssignTask(title, html){
     c.insertBefore(banner, c.firstChild);
   }, 60);
 }
+// ============================================================
+// FIREBASE HELPER FUNCTIONS
+// ============================================================
+
+// Load all students from Firestore (teacher only)
+async function fbLoadAllStudents(){
+  try{
+    const snap=await fbDb.collection('profiles').where('role','==','student').get();
+    students=[];userAccounts=[];
+    snap.forEach(doc=>{
+      const d=doc.data();
+      const sid=doc.id;
+      students.push({id:sid,name:d.name,cls:d.class||'',av:d.avatar||'S',col:d.color||'#1565C0',prog:0,status:'not_started',score:null,feedback:'',rewards:[],time:0,submitted:null,doc:''});
+      userAccounts.push({sid,email:d.username||'',password:d.password||''});
+    });
+    // Seed task progress for all students
+    seedTaskProgress();
+    // Load all progress
+    const progSnap=await fbDb.collection('progress').get();
+    progSnap.forEach(doc=>{
+      const d=doc.data();
+      if(d.studentId&&d.taskId){
+        tpSet(d.studentId,d.taskId,{
+          doc:d.doc||'',status:d.status||'not_started',
+          score:d.score??null,feedback:d.feedback||'',
+          rewards:d.rewards||[],time:d.timeSpent||0,
+          prog:d.progress||0,submitted:d.submittedAt||null
+        });
+      }
+    });
+  }catch(e){console.warn('fbLoadAllStudents error:',e);}
+}
+
+// Load all tasks from Firestore
+async function fbLoadAllTasks(){
+  try{
+    const snap=await fbDb.collection('tasks').orderBy('createdAt').get();
+    tasks=[];
+    snap.forEach(doc=>{
+      const d=doc.data();
+      tasks.push({id:doc.id,title:d.title,due:d.dueDate||'',to:d.assignedTo||'all',criteria:d.criteria||'',tpl:d.template||'',uploaded:d.uploaded||false});
+    });
+    seedTaskProgress();
+  }catch(e){console.warn('fbLoadAllTasks error:',e);}
+}
+
+// Load one student's progress from Firestore
+async function fbLoadStudentProgress(uid){
+  try{
+    const snap=await fbDb.collection('progress').where('studentId','==',uid).get();
+    snap.forEach(doc=>{
+      const d=doc.data();
+      if(d.taskId) tpSet(uid,d.taskId,{
+        doc:d.doc||'',status:d.status||'not_started',
+        score:d.score??null,feedback:d.feedback||'',
+        rewards:d.rewards||[],time:d.timeSpent||0,
+        prog:d.progress||0,submitted:d.submittedAt||null
+      });
+    });
+  }catch(e){console.warn('fbLoadStudentProgress error:',e);}
+}
+
+// Create a Firebase Auth account + Firestore profile for a new student
+// Note: requires Firebase Admin SDK for production; here we use client-side signUp
+// The teacher must be signed in after this call
+async function fbCreateStudent(name,cls,username,password,av,col){
+  try{
+    const email=username+'@wordclassroom.app';
+    // Save current teacher session info
+    const teacherToken=await fbAuth.currentUser?.getIdToken();
+    // Create the student auth account
+    const cred=await fbAuth.createUserWithEmailAndPassword(email,password);
+    const uid=cred.user.uid;
+    await fbDb.collection('profiles').doc(uid).set({
+      name,class:cls,username,password,
+      avatar:av,color:col,role:'student',
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    // Sign back out (student) — teacher needs to re-login
+    await fbAuth.signOut();
+    alert('✅ Student "'+name+'" created in Firebase!\n\nIMPORTANT: You have been signed out.\nPlease log back in as teacher.');
+    showSc('loginScreen');
+    CR='teacher';
+    document.getElementById('tabT').classList.add('active');
+    document.getElementById('tabS').classList.remove('active');
+    document.getElementById('lfUsername').style.display='none';
+  }catch(e){
+    console.warn('fbCreateStudent error:',e);
+    if(e.code==='auth/email-already-in-use'){
+      alert('A student with username "'+username+'" already exists in Firebase.');
+    }
+  }
+}
+
+// Save feedback from teacher to Firebase
+async function fbSaveFeedback(studentFbId,taskId,score,feedback,rewards){
+  if(!FB_READY||!studentFbId)return;
+  try{
+    await fbDb.collection('progress').doc(studentFbId+'_'+taskId).set({
+      score:score??null,feedback:feedback||'',rewards:rewards||[],
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
+  }catch(e){console.warn('fbSaveFeedback error:',e);}
+}
+
 document.addEventListener('DOMContentLoaded',()=>{
   updateSrcFields();
   // In sandbox iframes, `let`-scoped functions are NOT on window.
