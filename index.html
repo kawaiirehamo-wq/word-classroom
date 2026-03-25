@@ -546,11 +546,15 @@ let sources = [
   {id:3,type:'website',author:'NASA',year:'2023',title:'Global Climate Change: Vital Signs of the Planet',publisher:'',city:'',url:'https://climate.nasa.gov',journal:'',volume:'',issue:'',pages:''},
 ];
 
-let CU=null,CR='student',currTask=null,currSt=null,wMode='student',cmts=[],astimer=null,selR=[];
+let CU=null,CR='teacher',currTask=null,currSt=null,wMode='student',cmts=[],astimer=null,selR=[];
 
 // ============================================================
 // LOCALSTORAGE PERSISTENCE — saves all data across sessions
 // ============================================================
+// Per-student per-task progress: taskProgress[studentId][taskId]
+let taskProgress = {};
+let nextSid = 6, nextSrcId = 4;
+
 const LS_KEY = 'wc_data';
 
 function saveToStorage(){
@@ -586,8 +590,6 @@ function loadFromStorage(){
   }catch(e){ console.warn('Load error:', e); return false; }
 }
 
-// Per-student per-task progress: taskProgress[studentId][taskId] = {status, doc, score, feedback, rewards, time, submitted, prog}
-let taskProgress = {};
 function tpGet(sid, tid){
   const s=String(sid), t=String(tid);
   if(!taskProgress[s]) taskProgress[s]={};
@@ -615,7 +617,6 @@ function seedTaskProgress(){
   });
 }
 let citStyle='APA'; // current citation style
-let nextSid=6,nextSrcId=4;
 const COLORS=['#1565C0','#2e7d32','#6a1b9a','#c62828','#e65100','#00695c','#ad1457','#4527a0','#00838f','#558b2f'];
 
 // =============================================
