@@ -225,12 +225,13 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f0f0;overflow:hidden;height
      (from Firebase Console → Project Settings → Your Apps → Config)
      ====================================================== -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
-// ▼▼▼ PASTE YOUR FIREBASE CONFIG HERE ▼▼▼
+// ▼▼▼ FIREBASE CONFIG ▼▼▼
 const firebaseConfig = {
   apiKey:            "AIzaSyBMcVWb_lf5AQsTy0hQXqGGAewzereQuoU",
   authDomain:        "word-classroom.firebaseapp.com",
+  databaseURL:       "https://word-classroom-default-rtdb.firebaseio.com",
   projectId:         "word-classroom",
   storageBucket:     "word-classroom.firebasestorage.app",
   messagingSenderId: "234162036137",
@@ -247,9 +248,9 @@ try{
                        firebaseConfig.projectId.length > 3;
   if(configFilled){
     firebase.initializeApp(firebaseConfig);
-    fbDb = firebase.firestore();
+    fbDb = firebase.database();
     FB_READY = true;
-    console.log('✅ Firebase Firestore connected');
+    console.log('✅ Firebase Realtime Database connected');
   } else {
     console.warn('⚠️ Firebase not configured — running in local mode (data saves to this device only)');
   }
@@ -689,18 +690,19 @@ async function doLogin(){
   }
 
   if(FB_READY){
-    // Firestore lookup — no Firebase Auth needed for students
+    // Realtime Database lookup by username
     showLoginLoading('Signing in...');
     try{
-      const snap = await fbDb.collection('profiles')
-        .where('username','==',username)
-        .where('password','==',p)
-        .where('role','==','student')
-        .limit(1).get();
-      if(snap.empty){ throw new Error('Invalid credentials'); }
-      const doc  = snap.docs[0];
-      const uid  = doc.id;
-      const profile = doc.data();
+      const snap = await fbDb.ref('profiles').orderByChild('username').equalTo(username).once('value');
+      if(!snap.exists()){ throw new Error('User not found'); }
+      let uid=null, profile=null;
+      snap.forEach(child=>{
+        const d=child.val();
+        if(d.password===p && d.role==='student'){
+          uid=child.key; profile=d;
+        }
+      });
+      if(!uid){ throw new Error('Invalid credentials'); }
       await fbLoadAllTasks();
       await fbLoadStudentProgress(uid);
       hideLoginLoading();
@@ -892,12 +894,12 @@ async function saveStudent(){
     }
     const acc=userAccounts.find(a=>String(a.sid)===sid);
     if(acc){acc.email=email;acc.password=pass;}
-    // Update in Firestore if available
+    // Update in Realtime Database if available
     if(FB_READY){
-      fbDb.collection('profiles').doc(sid).update({
+      fbDb.ref('profiles/'+sid).update({
         name,class:cls,username:email,password:pass,
         avatar:st?.av||''
-      }).catch(e=>console.warn('Firestore update error:',e));
+      }).catch(e=>console.warn('RTDB update error:',e));
     }
   } else {
     // ── ADD new student — ALWAYS save locally first ──
@@ -912,14 +914,14 @@ async function saveStudent(){
     saveToStorage();
     // Also try to save to Firestore in background (for cross-device access)
     if(FB_READY){
-      fbDb.collection('profiles').doc(newId).set({
+      fbDb.ref('profiles/'+newId).set({
         name,class:cls,username:email,password:pass,
         avatar:av,color:col,role:'student',
-        createdAt:firebase.firestore.FieldValue.serverTimestamp()
+        createdAt:Date.now()
       }).then(()=>{
-        console.log('✅ Student also saved to Firestore:',email);
+        console.log('✅ Student saved to RTDB:',email);
       }).catch(e=>{
-        console.warn('⚠️ Firestore save failed (student still works locally):',e.message);
+        console.warn('⚠️ RTDB save failed (student still works locally):',e.message);
       });
     }
   }
@@ -939,10 +941,9 @@ async function deleteStudent(id){
   delete taskProgress[String(sid)];
   saveToStorage();
   if(FB_READY&&acc){
-    fbDb.collection('profiles').where('username','==',acc.email).get()
-      .then(snap=>snap.forEach(d=>d.ref.delete())).catch(()=>{});
-    const progSnap=await fbDb.collection('progress').where('studentId','==',String(sid)).get().catch(()=>null);
-    if(progSnap) progSnap.forEach(d=>d.ref.delete());
+    fbDb.ref('profiles/'+sid).remove().catch(()=>{});
+    fbDb.ref('progress').orderByChild('studentId').equalTo(String(sid)).once('value')
+      .then(snap=>snap.forEach(c=>c.ref.remove())).catch(()=>{});
   }
   refreshManage();
 }
@@ -1021,9 +1022,9 @@ function deleteTask(tid){
   students.forEach(s=>{ if(taskProgress[String(s.id)]) delete taskProgress[String(s.id)][String(tid)]; });
   saveToStorage();
   if(FB_READY){
-    fbDb.collection('tasks').doc(String(tid)).delete().catch(()=>{});
-    fbDb.collection('progress').where('taskId','==',tid).get()
-      .then(snap=>{const b=fbDb.batch();snap.forEach(d=>b.delete(d.ref));b.commit();}).catch(()=>{});
+    fbDb.ref('tasks/'+String(tid)).remove().catch(()=>{});
+    fbDb.ref('progress').orderByChild('taskId').equalTo(String(tid)).once('value')
+      .then(snap=>snap.forEach(c=>c.ref.remove())).catch(()=>{});
   }
   // Re-render tasks tab
   const btn=[...document.querySelectorAll('#teacherScreen .nav-item')].find(b=>b.textContent.includes('Task'));
@@ -1403,19 +1404,19 @@ async function autoSave(){
     saveToStorage();
     if(FB_READY&&CU.fbId){
       try{
-        await fbDb.collection('progress').doc(String(CU.fbId)+'_'+String(currTask.id)).set({
+        await fbDb.ref('progress/'+String(CU.fbId)+'_'+String(currTask.id)).update({
           studentId:String(CU.fbId), taskId:String(currTask.id),
           doc:html, status:tp.status==='not_started'?'in_progress':tp.status,
           progress:newProg, timeSpent:(tp.time||0)+1,
-          updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-        },{merge:true});
+          updatedAt:Date.now()
+        });
       }catch(e){console.warn('AutoSave error:',e);}
     }
   } else if(CU?.role==="teacher"&&currTask){
     const t=tasks.find(x=>x.id===currTask.id);
     if(t){
       t.tpl=html;showSaveIndicator();saveToStorage();
-      if(FB_READY) fbDb.collection('tasks').doc(String(t.id)).update({template:html}).catch(()=>{});
+      if(FB_READY) fbDb.ref('tasks/'+String(t.id)).update({template:html}).catch(()=>{});
     }
     else if(currTask._isUploadPreview){currTask.tpl=html;if(uploadedDocData)uploadedDocData.html=html;showSaveIndicator();}
   }
@@ -1436,12 +1437,12 @@ async function submitWork(){
   saveToStorage();
   if(FB_READY&&CU.fbId){
     try{
-      await fbDb.collection('progress').doc(String(CU.fbId)+'_'+String(currTask.id)).set({
+      await fbDb.ref('progress/'+String(CU.fbId)+'_'+String(currTask.id)).update({
         studentId:String(CU.fbId), taskId:String(currTask.id),
         doc:html, status:'submitted', progress:100,
         submittedAt:today,
-        updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-      },{merge:true});
+        updatedAt:Date.now()
+      });
     }catch(e){console.warn('Submit save error:',e);}
   }
   document.getElementById('docEd').contentEditable='false';
@@ -2093,10 +2094,10 @@ function doCreateTask(){
   tasks.push(newT);
   students.forEach(s=>tpSet(s.id,newT.id,{status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0}));
   if(FB_READY){
-    fbDb.collection('tasks').doc(String(newT.id)).set({
+    fbDb.ref('tasks/'+String(newT.id)).set({
       title:newT.title, dueDate:newT.due||'', assignedTo:newT.to||'all',
       criteria:newT.criteria||'', template:newT.tpl||'', uploaded:false,
-      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      createdAt:Date.now()
     }).catch(e=>console.warn('Task save error:',e));
   }
   saveToStorage();
@@ -2314,111 +2315,107 @@ function doCreateAndAssignTask(title, html){
 // FIREBASE HELPER FUNCTIONS
 // ============================================================
 
-// Load all students from Firestore (teacher only)
+// ── REALTIME DATABASE HELPERS ──
+
+// Load all students from RTDB (teacher only)
 async function fbLoadAllStudents(){
   try{
-    const snap=await fbDb.collection('profiles').where('role','==','student').get();
-    // Merge with existing local students — don't wipe local-only ones
-    const fsStudents=[];
-    const fsAccounts=[];
-    snap.forEach(doc=>{
-      const d=doc.data();
-      const sid=doc.id;
-      fsStudents.push({id:sid,name:d.name,cls:d.class||'',av:d.avatar||'S',col:d.color||'#1565C0',prog:0,status:'not_started',score:null,feedback:'',rewards:[],time:0,submitted:null,doc:''});
-      fsAccounts.push({sid,email:d.username||'',password:d.password||''});
-    });
-    if(fsStudents.length){
-      students=fsStudents;
-      userAccounts=fsAccounts;
-    }
-    // Seed task progress for all students
-    seedTaskProgress();
-    // Load all progress docs
-    const progSnap=await fbDb.collection('progress').get();
-    progSnap.forEach(doc=>{
-      const d=doc.data();
-      if(d.studentId&&d.taskId){
-        tpSet(String(d.studentId),String(d.taskId),{
-          doc:d.doc||'',status:d.status||'not_started',
-          score:d.score??null,feedback:d.feedback||'',
-          rewards:d.rewards||[],time:d.timeSpent||0,
-          prog:d.progress||0,submitted:d.submittedAt||null
-        });
+    const snap = await fbDb.ref('profiles').once('value');
+    if(!snap.exists()) return;
+    const rtStudents=[], rtAccounts=[];
+    snap.forEach(child=>{
+      const d=child.val(), sid=child.key;
+      if(d.role==='student'){
+        rtStudents.push({id:sid,name:d.name,cls:d.class||'',av:d.avatar||'??',col:d.color||'#1565C0',prog:0,status:'not_started',score:null,feedback:'',rewards:[],time:0,submitted:null,doc:''});
+        rtAccounts.push({sid,email:d.username||'',password:d.password||''});
       }
     });
+    if(rtStudents.length){ students=rtStudents; userAccounts=rtAccounts; }
+    // Load all progress
+    const progSnap = await fbDb.ref('progress').once('value');
+    if(progSnap.exists()){
+      progSnap.forEach(child=>{
+        const d=child.val();
+        if(d.studentId&&d.taskId){
+          tpSet(String(d.studentId),String(d.taskId),{
+            doc:d.doc||'', status:d.status||'not_started',
+            score:d.score??null, feedback:d.feedback||'',
+            rewards:d.rewards||[], time:d.timeSpent||0,
+            prog:d.progress||0, submitted:d.submittedAt||null
+          });
+        }
+      });
+    }
+    seedTaskProgress();
     saveToStorage();
   }catch(e){console.warn('fbLoadAllStudents error:',e);}
 }
 
-// Load all tasks from Firestore
+// Load all tasks from RTDB
 async function fbLoadAllTasks(){
   try{
-    const snap=await fbDb.collection('tasks').orderBy('createdAt').get();
+    const snap = await fbDb.ref('tasks').once('value');
+    if(!snap.exists()) return;
     tasks=[];
-    snap.forEach(doc=>{
-      const d=doc.data();
-      tasks.push({id:doc.id,title:d.title,due:d.dueDate||'',to:d.assignedTo||'all',criteria:d.criteria||'',tpl:d.template||'',uploaded:d.uploaded||false});
+    snap.forEach(child=>{
+      const d=child.val();
+      tasks.push({id:child.key,title:d.title,due:d.dueDate||'',to:d.assignedTo||'all',criteria:d.criteria||'',tpl:d.template||'',uploaded:d.uploaded||false});
     });
     seedTaskProgress();
   }catch(e){console.warn('fbLoadAllTasks error:',e);}
 }
 
-// Load one student's progress from Firestore
+// Load one student's progress from RTDB
 async function fbLoadStudentProgress(uid){
   try{
-    const snap=await fbDb.collection('progress').where('studentId','==',uid).get();
-    snap.forEach(doc=>{
-      const d=doc.data();
-      if(d.taskId) tpSet(uid,d.taskId,{
-        doc:d.doc||'',status:d.status||'not_started',
-        score:d.score??null,feedback:d.feedback||'',
-        rewards:d.rewards||[],time:d.timeSpent||0,
-        prog:d.progress||0,submitted:d.submittedAt||null
+    const snap = await fbDb.ref('progress').orderByChild('studentId').equalTo(uid).once('value');
+    if(!snap.exists()) return;
+    snap.forEach(child=>{
+      const d=child.val();
+      if(d.taskId) tpSet(uid,String(d.taskId),{
+        doc:d.doc||'', status:d.status||'not_started',
+        score:d.score??null, feedback:d.feedback||'',
+        rewards:d.rewards||[], time:d.timeSpent||0,
+        prog:d.progress||0, submitted:d.submittedAt||null
       });
     });
   }catch(e){console.warn('fbLoadStudentProgress error:',e);}
 }
 
-// Create a Firebase Auth account + Firestore profile for a new student
-// Note: requires Firebase Admin SDK for production; here we use client-side signUp
-// The teacher must be signed in after this call
+// Create student profile in RTDB
 async function fbCreateStudent(name,cls,username,password,av,col){
   try{
-    // Check username not already taken in Firestore
-    const existing=await fbDb.collection('profiles')
-      .where('username','==',username).limit(1).get();
-    if(!existing.empty){
+    // Check username not already taken
+    const existing=await fbDb.ref('profiles').orderByChild('username').equalTo(username).once('value');
+    if(existing.exists()){
       alert('Username "'+username+'" is already taken. Please choose another.');
       return;
     }
-    // Create Firestore profile — no Firebase Auth, just a Firestore document
-    const ref=fbDb.collection('profiles').doc();
-    const uid=ref.id;
-    await ref.set({
+    const newId = 'st_'+Date.now();
+    await fbDb.ref('profiles/'+newId).set({
       name,class:cls,username,password,
-      avatar:av,color:col,role:'student',
-      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      avatar:av,color:col,role:'student',createdAt:Date.now()
     });
-    // Add to local arrays with the real Firestore UID
-    students.push({id:uid,name,cls,av,col,prog:0,status:'not_started',score:null,feedback:'',rewards:[],time:0,submitted:null,doc:''});
-    userAccounts.push({sid:uid,email:username,password});
-    tasks.forEach(t=>tpSet(String(uid),String(t.id),{status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0}));
+    // Add to local arrays
+    students.push({id:newId,name,cls,av,col,prog:0,status:'not_started',score:null,feedback:'',rewards:[],time:0,submitted:null,doc:''});
+    userAccounts.push({sid:newId,email:username,password});
+    tasks.forEach(t=>tpSet(String(newId),String(t.id),{status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0}));
     saveToStorage();
-    console.log('✅ Student created in Firestore:',username,uid);
+    console.log('✅ Student saved to RTDB:',username,newId);
   }catch(e){
     console.warn('fbCreateStudent error:',e);
     alert('Error creating student: '+e.message);
   }
 }
 
-// Save feedback from teacher to Firebase
+// Save feedback to RTDB
 async function fbSaveFeedback(studentFbId,taskId,score,feedback,rewards){
   if(!FB_READY||!studentFbId)return;
   try{
-    await fbDb.collection('progress').doc(studentFbId+'_'+taskId).set({
-      score:score??null,feedback:feedback||'',rewards:rewards||[],
-      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-    },{merge:true});
+    await fbDb.ref('progress/'+studentFbId+'_'+taskId).update({
+      score:score??null, feedback:feedback||'', rewards:rewards||[],
+      updatedAt:Date.now()
+    });
   }catch(e){console.warn('fbSaveFeedback error:',e);}
 }
 
