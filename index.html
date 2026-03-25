@@ -1,0 +1,2159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word 2019 Classroom</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#f0f0f0;overflow:hidden;height:100vh}
+.screen{position:fixed;inset:0;display:none;flex-direction:column}
+.screen.active{display:flex}
+/* LOGIN */
+#loginScreen{background:linear-gradient(135deg,#1565C0,#0D47A1);align-items:center;justify-content:center}
+.login-card{background:white;border-radius:10px;padding:36px;width:340px;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.login-logo{text-align:center;margin-bottom:20px}
+.w-icon{width:54px;height:54px;background:#1565C0;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:white;font-size:26px;font-weight:900}
+.login-logo h2{margin-top:8px;font-size:17px;color:#111}.login-logo p{color:#777;font-size:12px}
+.role-tabs{display:flex;border:1px solid #ddd;border-radius:6px;margin-bottom:18px;overflow:hidden}
+.role-tab{flex:1;padding:8px;text-align:center;cursor:pointer;font-size:13px;background:white;border:none;transition:all .2s}
+.role-tab.active{background:#1565C0;color:white;font-weight:600}
+.lf{margin-bottom:13px}.lf label{display:block;font-size:12px;color:#555;margin-bottom:3px;font-weight:600}
+.lf input,.lf select{width:100%;padding:9px 11px;border:1px solid #ddd;border-radius:5px;font-size:14px;outline:none}
+.lf input:focus{border-color:#1565C0}
+.login-btn{width:100%;padding:10px;background:#1565C0;color:white;border:none;border-radius:5px;font-size:15px;cursor:pointer;font-weight:600}
+.login-btn:hover{background:#0D47A1}
+.login-hint{margin-top:12px;font-size:11px;color:#999;text-align:center;line-height:1.8}
+.login-err{color:#c62828;font-size:12px;margin-bottom:10px;padding:6px 10px;background:#ffebee;border-radius:4px}
+/* LAYOUT */
+#teacherScreen,#studentScreen{flex-direction:row;height:100vh;overflow:hidden}
+.sidebar{width:210px;background:#1565C0;color:white;display:flex;flex-direction:column;flex-shrink:0;height:100vh}
+.student-sidebar{width:210px;background:#1b5e20;color:white;display:flex;flex-direction:column;flex-shrink:0;height:100vh}
+.sb-logo{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.15);display:flex;align-items:center;gap:10px}
+.sb-logo .wsm{width:32px;height:32px;background:white;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;color:#1565C0;font-weight:900;font-size:16px}
+.sb-logo span{font-size:13px;font-weight:600;line-height:1.3}
+.sb-nav{flex:1;padding:6px 0;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;font-size:13px;background:none;border:none;color:white;width:100%;text-align:left;transition:background .15s}
+.nav-item:hover,.nav-item.active{background:rgba(255,255,255,.18)}
+.sb-foot{padding:12px 16px;border-top:1px solid rgba(255,255,255,.15)}
+.sb-foot .uname{font-size:13px;font-weight:600;color:white}
+.sb-foot .urole{font-size:11px;opacity:.7;color:white}
+.logout-btn{margin-top:8px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:white;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:12px;width:100%}
+.logout-btn:hover{background:rgba(255,255,255,.25)}
+.main-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#f5f5f5}
+.main-hdr{background:white;padding:13px 22px;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.main-hdr h1{font-size:17px;color:#111}
+.tab-content{flex:1;overflow-y:auto;padding:20px}
+/* BUTTONS */
+.btn{padding:7px 13px;border-radius:4px;border:1px solid #ddd;cursor:pointer;font-size:13px;background:white;transition:all .15s}
+.btn:hover{background:#f0f0f0}
+.btn-primary{background:#1565C0;color:white;border-color:#1565C0}.btn-primary:hover{background:#0D47A1}
+.btn-green{background:#2e7d32;color:white;border-color:#2e7d32}.btn-green:hover{background:#1b5e20}
+.btn-red{background:#c62828;color:white;border-color:#c62828}.btn-red:hover{background:#b71c1c}
+.btn-orange{background:#e65100;color:white;border-color:#e65100}
+.btn-sm{padding:4px 10px;font-size:12px}
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:white;border-radius:8px;padding:15px;border:1px solid #e0e0e0}
+.stat-lbl{font-size:11px;color:#777;margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.stat-val{font-size:26px;font-weight:700;color:#1565C0}
+/* TABLES */
+.dtable{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;border:1px solid #e0e0e0}
+.dtable th{background:#f8f8f8;padding:10px 13px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #e0e0e0}
+.dtable td{padding:9px 13px;font-size:13px;border-bottom:1px solid #f2f2f2;vertical-align:middle}
+.dtable tr:last-child td{border-bottom:none}.dtable tr:hover td{background:#fafafa}
+.badge{display:inline-block;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:700}
+.bs{background:#e8f5e9;color:#2e7d32}.bi{background:#fff3e0;color:#e65100}.bn{background:#f5f5f5;color:#888}.bo{background:#e3f2fd;color:#1565C0}
+.av{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;margin-right:7px;vertical-align:middle}
+.pbar{height:8px;background:#eee;border-radius:4px;overflow:hidden;min-width:80px;display:inline-block}
+.pfill{height:100%;background:#1565C0;border-radius:4px}
+.task-card{background:white;border-radius:8px;padding:15px;margin-bottom:12px;border:1px solid #e0e0e0}
+.task-card h3{font-size:14px;color:#111;margin-bottom:5px}
+.tmeta{font-size:12px;color:#777;display:flex;gap:14px;flex-wrap:wrap}
+/* STUDENT MANAGE */
+.sm-card{background:white;border-radius:8px;border:1px solid #e0e0e0;margin-bottom:10px;overflow:hidden}
+.sm-row{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #f0f0f0}
+.sm-row:last-child{border-bottom:none}
+.sm-info{flex:1}
+.sm-name{font-size:14px;font-weight:600;color:#111}
+.sm-meta{font-size:12px;color:#777;margin-top:2px}
+.sm-actions{display:flex;gap:5px}
+.sm-hdr{background:#f8f8f8;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e0e0e0}
+.sm-hdr-title{font-size:13px;font-weight:700;color:#1565C0}
+/* ANALYTICS */
+.anarow{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.ananame{width:140px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.anabar{flex:1;height:18px;background:#eee;border-radius:4px;overflow:hidden}
+.anafill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:11px;color:white;transition:width .5s}
+/* STUDENT TASKS */
+.stask{background:white;border-radius:8px;padding:16px;margin-bottom:12px;border:1px solid #e0e0e0;cursor:pointer;transition:all .2s}
+.stask:hover{box-shadow:0 3px 12px rgba(0,0,0,.12);transform:translateY(-1px)}
+.stask h3{font-size:14px;margin-bottom:6px}
+.fbbox{background:#fff8e1;border-left:3px solid #FFC107;padding:9px;border-radius:4px;font-size:12px;margin-top:8px;color:#444}
+.rwrow{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.rbadge{padding:3px 9px;border-radius:12px;font-size:12px;background:#e8f5e9;color:#2e7d32;font-weight:700}
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:9999}
+.modal-overlay.open{display:flex}
+.modal{background:white;border-radius:9px;padding:24px;width:500px;max-height:88vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.3)}
+.modal h2{font-size:16px;margin-bottom:16px;color:#111}
+.ff{margin-bottom:13px}.ff label{display:block;font-size:12px;color:#555;margin-bottom:3px;font-weight:600}
+.ff input,.ff select,.ff textarea{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;outline:none}
+.ff input:focus,.ff select:focus,.ff textarea:focus{border-color:#1565C0}
+.ff textarea{height:75px;resize:vertical}
+.mbtn{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.chklist{max-height:150px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;padding:8px}
+.chklist label{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:13px;cursor:pointer}
+.qtags{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.qtag{padding:3px 9px;border:1px solid #ddd;border-radius:12px;font-size:11px;cursor:pointer}
+.qtag:hover{background:#e3f2fd;border-color:#1565C0;color:#1565C0}
+.remojis{display:flex;gap:10px;margin-top:5px}
+.rem{font-size:22px;cursor:pointer;padding:4px;border-radius:4px;opacity:.3}
+.rem.sel{opacity:1;background:#e3f2fd}
+/* WORD */
+#wordScreen{flex-direction:column;height:100vh;overflow:hidden}
+.word-tb{background:#1565C0;color:white;display:flex;align-items:center;height:36px;padding:0 8px;flex-shrink:0;user-select:none}
+.qabtn{background:none;border:none;color:rgba(255,255,255,.85);cursor:pointer;padding:4px 7px;font-size:13px;border-radius:3px}
+.qabtn:hover{background:rgba(255,255,255,.18);color:white}
+.doctitle{flex:1;text-align:center;font-size:13px}
+.winbtns{display:flex;margin-left:8px}
+.winbtn{background:none;border:none;color:white;width:36px;height:36px;cursor:pointer;font-size:12px}
+.winbtn:hover{background:rgba(255,255,255,.18)}.winbtn.cl:hover{background:#c62828}
+/* RIBBON */
+.ribbon-wrap{background:#f7f7f7;border-bottom:1px solid #c8c8c8;flex-shrink:0}
+.ribbon-tabs{display:flex;background:#1565C0;padding:0 4px;overflow-x:auto}
+.ribbon-tab{padding:6px 13px;font-size:12px;color:rgba(255,255,255,.8);cursor:pointer;border:none;background:none;border-radius:2px 2px 0 0;white-space:nowrap;flex-shrink:0}
+.ribbon-tab:hover{background:rgba(255,255,255,.12);color:white}
+.ribbon-tab.active{background:#f7f7f7;color:#1565C0;font-weight:700}
+.ribbon-body{display:flex;align-items:stretch;padding:4px 8px;gap:0;min-height:80px;overflow-x:auto}
+.rg{display:flex;flex-direction:column;border-right:1px solid #ddd;padding:2px 10px 0;min-width:fit-content}
+.rg:last-child{border-right:none}
+.rgbtns{display:flex;align-items:flex-start;flex-wrap:wrap;gap:2px;flex:1;padding-top:2px}
+.rglbl{font-size:10px;color:#999;text-align:center;margin-top:auto;padding:3px 0 0;border-top:1px solid #e8e8e8}
+.rb{background:none;border:1px solid transparent;border-radius:3px;cursor:pointer;padding:4px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;color:#1a1a1a;min-width:36px;transition:all .1s}
+.rb:hover{background:#e8e8e8;border-color:#c0c0c0}
+.rb.on{background:#ddeeff;border-color:#1565C0;color:#1565C0}
+.rb-icon{font-size:15px;line-height:1.2}
+.rb-lbl{font-size:10px;line-height:1.2;text-align:center;white-space:nowrap}
+/* big ribbon button */
+.rb-big{min-width:54px;padding:4px 8px}
+.rb-big .rb-icon{font-size:22px}
+/* ribbon select/input */
+.fsel{border:1px solid #ccc;border-radius:3px;padding:2px 5px;font-size:12px;height:26px;outline:none;cursor:pointer}
+.sinp{width:42px;border:1px solid #ccc;border-radius:3px;padding:2px 4px;font-size:12px;height:26px;text-align:center;outline:none}
+.cinp{width:26px;height:24px;border:1px solid #ccc;border-radius:3px;cursor:pointer;padding:1px}
+/* Style dropdown in ribbon */
+.style-sel{border:1px solid #ccc;border-radius:3px;padding:2px 6px;font-size:12px;height:26px;outline:none;min-width:80px;cursor:pointer}
+/* PAGE */
+.ruler-h{height:20px;background:#f0f0f0;border-bottom:1px solid #ccc;flex-shrink:0;display:flex;align-items:center;padding-left:26px;font-size:10px;color:#aaa;overflow:hidden}
+.workspace{display:flex;flex:1;overflow:hidden}
+.ruler-v{width:18px;background:#f0f0f0;border-right:1px solid #ccc;flex-shrink:0}
+.page-area{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;align-items:center;background:#808080}
+.page{width:816px;min-height:1056px;background:white;padding:96px;box-shadow:0 2px 12px rgba(0,0,0,.35);position:relative;margin-bottom:20px;flex-shrink:0}
+.phdr{position:absolute;top:28px;left:96px;right:96px;border-bottom:1px dashed #bbb;min-height:22px;font-size:12px;color:#888;outline:none;padding-bottom:2px}
+.pftr{position:absolute;bottom:28px;left:96px;right:96px;border-top:1px dashed #bbb;min-height:22px;font-size:12px;color:#888;outline:none;padding-top:2px}
+.doc-editor{outline:none;min-height:820px;font-family:'Times New Roman',serif;font-size:16px;line-height:1.7;color:#000}
+.doc-editor:empty::before{content:'Start typing your document here...';color:#bbb;pointer-events:none}
+.doc-editor table{border-collapse:collapse;width:100%;margin:8px 0}
+.doc-editor td,th{border:1px solid #ccc;padding:7px;min-width:50px}
+/* STATUS BAR */
+.statusbar{background:#1565C0;color:white;display:flex;align-items:center;padding:0 12px;height:25px;font-size:11px;gap:16px;flex-shrink:0}
+.sbr{margin-left:auto;display:flex;align-items:center;gap:10px}
+.zrow{display:flex;align-items:center;gap:5px}
+.zrow input[type=range]{width:75px;accent-color:white}
+/* SIDE PANEL (right panel in Word) */
+.sidepanel{width:320px;background:white;border-left:1px solid #ddd;display:none;flex-direction:column;flex-shrink:0}
+.sidepanel.open{display:flex}
+.sp-hdr{background:#f0f4ff;border-bottom:1px solid #ddd;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.sp-hdr h3{font-size:13px;font-weight:700;color:#1565C0;display:flex;align-items:center;gap:6px}
+.sp-body{flex:1;overflow-y:auto;padding:12px}
+.sp-close{background:none;border:none;cursor:pointer;font-size:16px;color:#888;padding:2px 6px;border-radius:3px}
+.sp-close:hover{color:#c62828;background:#ffebee}
+/* FEEDBACK PANEL */
+.fbpanel{width:270px;background:white;border-left:1px solid #e0e0e0;padding:14px;overflow-y:auto;flex-shrink:0;display:none;flex-direction:column;gap:6px}
+.fbpanel.open{display:flex}
+.fbpanel h3{font-size:13px;font-weight:700;color:#1565C0;margin-bottom:8px}
+.comment-item{background:#fff8e1;border-left:3px solid #FFC107;padding:7px;border-radius:4px;font-size:12px}
+.ci-name{font-weight:700;color:#111;margin-bottom:2px;font-size:11px}
+.cinprow{display:flex;gap:4px;margin-top:6px}
+.cinprow input{flex:1;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:12px;outline:none}
+/* SOURCES */
+.src-item{border:1px solid #e0e0e0;border-radius:6px;padding:10px;margin-bottom:7px;background:#fafafa;cursor:pointer;transition:all .15s}
+.src-item:hover{border-color:#1565C0;background:#e8f0fe}
+.src-item.sel{border-color:#1565C0;background:#e3f2fd}
+.si-title{font-size:13px;font-weight:600;color:#111;margin-bottom:2px}
+.si-meta{font-size:11px;color:#777}
+.si-preview{font-size:11px;color:#333;margin-top:5px;font-style:italic;padding-top:5px;border-top:1px solid #eee;line-height:1.5}
+/* SPELL */
+.spell-item{border:1px solid #ffcdd2;border-radius:6px;padding:10px;margin-bottom:8px;background:#fff8f8}
+.spell-word{font-size:15px;font-weight:700;color:#c62828;margin-bottom:4px}
+.spell-ctx{font-size:12px;color:#555;margin-bottom:6px;line-height:1.5}
+.spell-sugg{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.sugg-btn{padding:3px 10px;border:1px solid #1565C0;border-radius:12px;font-size:12px;cursor:pointer;background:white;color:#1565C0}
+.sugg-btn:hover{background:#1565C0;color:white}
+/* THESAURUS */
+.thes-group{margin-bottom:12px}
+.tg-pos{font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+.tg-words{display:flex;flex-wrap:wrap;gap:4px}
+.thes-word{padding:3px 10px;border:1px solid #ddd;border-radius:12px;font-size:12px;cursor:pointer;background:white;transition:all .15s}
+.thes-word:hover{background:#e3f2fd;border-color:#1565C0;color:#1565C0}
+/* WORD COUNT PANEL */
+.wc-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
+.wc-row:last-child{border-bottom:none}
+.wc-val{font-weight:700;color:#1565C0;font-size:16px}
+/* EXPORT TABLE */
+.etable{width:100%;border-collapse:collapse;font-size:12px}
+.etable th{background:#1565C0;color:white;padding:8px 10px;text-align:left}
+.etable td{padding:7px 10px;border-bottom:1px solid #eee}
+.etable tr:nth-child(even) td{background:#f9f9f9}
+/* SS */
+.ss-hdr{padding:16px;border-bottom:1px solid rgba(255,255,255,.15)}
+.ss-av{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;margin-bottom:8px}
+.ss-pbar{height:6px;background:rgba(255,255,255,.25);border-radius:3px;margin-top:8px}
+.ss-pfill{height:100%;background:#A5D6A7;border-radius:3px;transition:width .4s}
+@media(max-width:768px){
+  .sidebar,.student-sidebar{width:52px}
+  .sb-logo span,.sb-foot .uname,.sb-foot .urole{display:none}
+  .stats-row{grid-template-columns:repeat(2,1fr)}
+  .page{width:100%;min-width:300px;padding:40px 20px}
+  .sidepanel{width:260px}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="loginScreen" class="screen active">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="w-icon">W</div>
+      <h2>Word 2019 Simulator</h2>
+      <p>Classroom Learning Platform</p>
+    </div>
+    <div class="role-tabs">
+      <button class="role-tab active" id="tabT" onclick="setRole('teacher')">👩‍🏫 Teacher</button>
+      <button class="role-tab" id="tabS" onclick="setRole('student')">🎓 Student</button>
+    </div>
+    <div id="loginErr" class="login-err" style="display:none"></div>
+    <div class="lf" id="lfUsername" style="display:none"><label>Username</label><input id="lu" placeholder="e.g. ahmed" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <div class="lf"><label>Password</label><input id="lp" type="password" placeholder="Enter teacher password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="login-hint" id="loginHint">Password: <b>teacher123</b></div>
+  </div>
+</div>
+
+<!-- ===== TEACHER DASHBOARD ===== -->
+<div id="teacherScreen" class="screen">
+  <div class="sidebar">
+    <div class="sb-logo"><div class="wsm">W</div><span>Word<br>Classroom</span></div>
+    <div class="sb-nav">
+      <button class="nav-item active" onclick="tTab('overview',this)">📊 <span>Overview</span></button>
+      <button class="nav-item" onclick="tTab('students',this)">👥 <span>Students</span></button>
+      <button class="nav-item" onclick="tTab('manage',this)">⚙️ <span>Manage Users</span></button>
+      <button class="nav-item" onclick="tTab('tasks',this)">📋 <span>Tasks</span></button>
+      <button class="nav-item" onclick="tTab('analytics',this)">📈 <span>Analytics</span></button>
+      <button class="nav-item" onclick="tTab('create',this)">✏️ <span>Create Doc</span></button>
+      <button class="nav-item" onclick="tTab('export',this)">📥 <span>Export</span></button>
+    </div>
+    <div class="sb-foot">
+      <div class="uname" id="tName">Ms. Johnson</div>
+      <div class="urole">Teacher</div>
+      <button class="logout-btn" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+  <div class="main-area">
+    <div class="main-hdr">
+      <h1 id="tTabTitle">Overview</h1>
+      <div id="tHdrBtns" style="display:flex;gap:8px"></div>
+    </div>
+    <div class="tab-content" id="tContent"></div>
+  </div>
+</div>
+
+<!-- ===== STUDENT DASHBOARD ===== -->
+<div id="studentScreen" class="screen">
+  <div class="student-sidebar">
+    <div class="ss-hdr">
+      <div class="ss-av" id="ssAv">AA</div>
+      <div style="font-size:14px;font-weight:600;color:white" id="ssNm">Ahmed</div>
+      <div style="font-size:12px;opacity:.75;color:white" id="ssCl">Grade 10A</div>
+      <div class="ss-pbar"><div class="ss-pfill" id="ssPf" style="width:0%"></div></div>
+      <div style="font-size:11px;opacity:.8;color:white;margin-top:4px" id="ssPl">0% complete</div>
+    </div>
+    <div class="sb-nav" id="sStudentNav">
+      <button class="nav-item active" onclick="showStudentTab('tasks',this)">📋 <span>My Tasks</span></button>
+      <button class="nav-item" onclick="showStudentTab('rewards',this)">🏆 <span>Rewards</span></button>
+      <button class="nav-item" onclick="showStudentTab('feedback',this)">💬 <span>Feedback</span></button>
+    </div>
+    <div style="margin-top:auto;padding:12px;border-top:1px solid rgba(255,255,255,.15)">
+      <button class="logout-btn" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+  <div class="main-area">
+    <div class="main-hdr"><h1 id="sWelcome">Welcome!</h1></div>
+    <div class="tab-content" id="sContent"></div>
+  </div>
+</div>
+
+<!-- ===== WORD SIMULATOR ===== -->
+<div id="wordScreen" class="screen">
+  <!-- Title Bar -->
+  <div class="word-tb">
+    <button class="qabtn" onclick="execCmd('undo')" title="Undo">↩</button>
+    <button class="qabtn" onclick="execCmd('redo')" title="Redo">↪</button>
+    <button class="qabtn" onclick="autoSave()" title="Save">💾</button>
+    <span class="doctitle" id="wTitle">Document – Word 2019 Simulator</span>
+    <button class="qabtn" onclick="backFromWord()" style="font-size:12px;margin-right:4px">← Back</button>
+    <div class="winbtns">
+      <button class="winbtn">─</button><button class="winbtn">□</button><button class="winbtn cl">✕</button>
+    </div>
+  </div>
+  <!-- Ribbon -->
+  <div class="ribbon-wrap">
+    <div class="ribbon-tabs" id="rTabs">
+      <button class="ribbon-tab active" onclick="rTab('home',this)">Home</button>
+      <button class="ribbon-tab" onclick="rTab('insert',this)">Insert</button>
+      <button class="ribbon-tab" onclick="rTab('design',this)">Design</button>
+      <button class="ribbon-tab" onclick="rTab('layout',this)">Layout</button>
+      <button class="ribbon-tab" onclick="rTab('references',this)">References</button>
+      <button class="ribbon-tab" onclick="rTab('mailings',this)">Mailings</button>
+      <button class="ribbon-tab" onclick="rTab('review',this)">Review</button>
+      <button class="ribbon-tab" onclick="rTab('view',this)">View</button>
+    </div>
+    <div class="ribbon-body" id="rBody"></div>
+  </div>
+  <!-- Ruler -->
+  <div class="ruler-h" id="rulerH" style="padding-left:26px;font-size:10px;color:#aaa;letter-spacing:12px">· 1 · · · 2 · · · 3 · · · 4 · · · 5 · · · 6 · · · 7 · · · 8</div>
+  <!-- Workspace -->
+  <div class="workspace">
+    <div class="ruler-v" id="rulerV"></div>
+    <div class="page-area" id="pageArea">
+      <div class="page" id="docPage">
+        <div class="phdr" id="pgHdr" contenteditable="true"></div>
+        <div class="doc-editor" id="docEd" contenteditable="true"></div>
+        <div class="pftr" id="pgFtr" contenteditable="true"></div>
+      </div>
+    </div>
+    <!-- Side Panel (References / Review tools) -->
+    <div class="sidepanel" id="sidePanel">
+      <div class="sp-hdr">
+        <h3 id="spTitle">Panel</h3>
+        <button class="sp-close" onclick="closeSP()">✕</button>
+      </div>
+      <div class="sp-body" id="spBody"></div>
+    </div>
+    <!-- Feedback Panel -->
+    <div class="fbpanel" id="fbPanel">
+      <h3>💬 Comments &amp; Feedback</h3>
+      <div id="fbTeacher"></div>
+      <div id="fbComments"></div>
+      <div class="cinprow">
+        <input id="cinp" placeholder="Add comment..." onkeydown="if(event.key==='Enter')addCmt()"/>
+        <button class="btn btn-primary btn-sm" onclick="addCmt()">Add</button>
+      </div>
+      <button class="btn btn-sm" style="width:100%;margin-top:6px" onclick="closeFb()">Close</button>
+    </div>
+  </div>
+  <!-- Status Bar -->
+  <div class="statusbar">
+    <span>Page 1</span>
+    <span id="wCount">0 words</span>
+    <span id="wRole" style="opacity:.7"></span>
+    <div class="sbr">
+      <button id="submitBtn" class="btn btn-green btn-sm" style="display:none" onclick="submitWork()">✔ Submit</button>
+      <button class="btn btn-primary btn-sm" onclick="toggleFb()">💬 Comments</button>
+      <div class="zrow">
+        <span>Zoom:</span>
+        <input type="range" min="50" max="200" value="100" id="zSlider" oninput="setZoom(this.value)">
+        <span id="zLbl">100%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODALS ===== -->
+<!-- Insert Table -->
+<div id="mTable" class="modal-overlay" onclick="if(event.target===this)closeM('mTable')">
+  <div class="modal" style="width:280px">
+    <h2>Insert Table</h2>
+    <div class="ff"><label>Rows</label><input type="number" id="mRows" value="3" min="1" max="20"/></div>
+    <div class="ff"><label>Columns</label><input type="number" id="mCols" value="3" min="1" max="10"/></div>
+    <div class="mbtn"><button class="btn" onclick="closeM('mTable')">Cancel</button><button class="btn btn-primary" onclick="doTable()">Insert</button></div>
+  </div>
+</div>
+
+<!-- Create Task -->
+<div id="mTask" class="modal-overlay" onclick="if(event.target===this)closeM('mTask')">
+  <div class="modal">
+    <h2>Create New Task</h2>
+    <div class="ff"><label>Title</label><input id="ntTitle" placeholder="e.g. Essay: Climate Change"/></div>
+    <div class="ff"><label>Due Date</label><input type="date" id="ntDue"/></div>
+    <div class="ff"><label>Assign To</label><select id="ntAssign"><option value="all">All Students</option><option value="Grade 10A">Grade 10A</option><option value="Grade 10B">Grade 10B</option></select></div>
+    <div class="ff"><label>Criteria</label><textarea id="ntCrit" placeholder="Grading criteria..."></textarea></div>
+    <div class="ff"><label>Template (HTML)</label><textarea id="ntTpl" placeholder="<h2>Title</h2><p>Instructions...</p>"></textarea></div>
+    <div class="mbtn"><button class="btn" onclick="closeM('mTask')">Cancel</button><button class="btn btn-primary" onclick="doCreateTask()">Create</button></div>
+  </div>
+</div>
+
+<!-- Assign Task -->
+<div id="mAssign" class="modal-overlay" onclick="if(event.target===this)closeM('mAssign')">
+  <div class="modal">
+    <h2 id="mAssignTitle">Assign Task</h2>
+    <div class="ff"><label>Assign To</label><select id="ato" onchange="toggleIndiv()"><option value="all">All Students</option><option value="Grade 10A">Grade 10A</option><option value="Grade 10B">Grade 10B</option><option value="individual">Individual Students</option></select></div>
+    <div class="ff" id="indivDiv" style="display:none"><label>Select Students</label><div class="chklist" id="sChkList"></div></div>
+    <div class="ff"><label>Due Date</label><input type="date" id="aDue"/></div>
+    <div class="ff"><label>Instructions</label><textarea id="aInstr" placeholder="Additional notes..."></textarea></div>
+    <div class="mbtn"><button class="btn" onclick="closeM('mAssign')">Cancel</button><button class="btn btn-primary" onclick="doAssign()">Assign</button></div>
+  </div>
+</div>
+
+<!-- Feedback -->
+<div id="mFeedback" class="modal-overlay" onclick="if(event.target===this)closeM('mFeedback')">
+  <div class="modal">
+    <h2 id="mFbTitle">Feedback</h2>
+    <div class="ff"><label>Score (/100)</label><input type="number" id="mFbScore" min="0" max="100"/></div>
+    <div class="ff">
+      <label>Feedback Text</label>
+      <textarea id="mFbText" placeholder="Write feedback..."></textarea>
+      <div class="qtags" style="margin-top:5px">
+        <span class="qtag" onclick="apFb('Excellent work! Keep it up.')">✨ Excellent</span>
+        <span class="qtag" onclick="apFb('Good effort! Room to improve.')">👍 Good</span>
+        <span class="qtag" onclick="apFb('This needs revision.')">🔄 Revise</span>
+        <span class="qtag" onclick="apFb('Some parts are incomplete.')">⚠️ Incomplete</span>
+      </div>
+    </div>
+    <div class="ff"><label>Rewards</label>
+      <div class="remojis" id="remojis">
+        <span class="rem" data-r="⭐" onclick="togR(this)">⭐</span>
+        <span class="rem" data-r="🏆" onclick="togR(this)">🏆</span>
+        <span class="rem" data-r="🎖" onclick="togR(this)">🎖</span>
+        <span class="rem" data-r="👏" onclick="togR(this)">👏</span>
+        <span class="rem" data-r="💡" onclick="togR(this)">💡</span>
+      </div>
+    </div>
+    <div class="mbtn"><button class="btn" onclick="closeM('mFeedback')">Cancel</button><button class="btn btn-primary" onclick="saveFb()">Save</button></div>
+  </div>
+</div>
+
+<!-- Add/Edit Student -->
+<div id="mStudent" class="modal-overlay" onclick="if(event.target===this)closeM('mStudent')">
+  <div class="modal" style="width:440px">
+    <h2 id="mStTitle">Add New Student</h2>
+    <input type="hidden" id="mStId"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="ff"><label>Full Name</label><input id="mStName" placeholder="e.g. Layla Ahmad"/></div>
+      <div class="ff"><label>Class / Group</label><input id="mStClass" placeholder="e.g. Grade 10A"/></div>
+      <div class="ff"><label>Username (login)</label><input id="mStUser" placeholder="e.g. layla"/></div>
+      <div class="ff"><label>Password</label><input type="text" id="mStPass" placeholder="e.g. student123"/></div>
+    </div>
+    <div class="mbtn"><button class="btn" onclick="closeM('mStudent')">Cancel</button><button class="btn btn-primary" onclick="saveStudent()">Save Student</button></div>
+  </div>
+</div>
+
+<!-- Add Source (Citations) -->
+<div id="mSource" class="modal-overlay" onclick="if(event.target===this)closeM('mSource')">
+  <div class="modal" style="width:480px">
+    <h2 id="mSrcTitle">Add New Source</h2>
+    <input type="hidden" id="mSrcId"/>
+    <div class="ff">
+      <label>Source Type</label>
+      <select id="mSrcType" onchange="updateSrcFields()">
+        <option value="book">Book</option>
+        <option value="journal">Journal Article</option>
+        <option value="website">Website</option>
+        <option value="newspaper">Newspaper Article</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div id="srcFields"></div>
+    <div class="mbtn"><button class="btn" onclick="closeM('mSource')">Cancel</button><button class="btn btn-primary" onclick="saveSource()">Save Source</button></div>
+  </div>
+</div>
+
+<!-- Hidden file input for document upload -->
+<input type="file" id="uploadDocInput" accept=".txt,.html,.htm,.docx,.doc,.rtf" style="display:none" onchange="handleDocUpload(this)"/>
+
+<script>
+// =============================================
+// DATA
+// =============================================
+let students = [
+  {id:1,name:'Ahmed Al-Rashid',cls:'Grade 10A',av:'AA',col:'#1565C0',prog:85,status:'submitted',score:92,feedback:'Excellent work! Great use of formatting.',rewards:['⭐','⭐','⭐','🏆'],time:47,submitted:'2025-03-10',doc:''},
+  {id:2,name:'Sara Hassan',cls:'Grade 10A',av:'SH',col:'#2e7d32',prog:60,status:'in_progress',score:null,feedback:'Good effort, finish the conclusion.',rewards:['⭐','⭐'],time:32,submitted:null,doc:''},
+  {id:3,name:'Mohammed Khalid',cls:'Grade 10B',av:'MK',col:'#6a1b9a',prog:0,status:'not_started',score:null,feedback:'',rewards:[],time:0,submitted:null,doc:''},
+  {id:4,name:'Fatima Noor',cls:'Grade 10A',av:'FN',col:'#c62828',prog:100,status:'submitted',score:88,feedback:'Good job! Check references.',rewards:['⭐','⭐','⭐'],time:58,submitted:'2025-03-11',doc:''},
+  {id:5,name:'Yusuf Omar',cls:'Grade 10B',av:'YO',col:'#e65100',prog:30,status:'opened',score:null,feedback:'',rewards:['⭐'],time:15,submitted:null,doc:''},
+];
+let userAccounts = [
+  {sid:1,email:'ahmed',password:'student123'},
+  {sid:2,email:'sara',password:'student123'},
+  {sid:3,email:'mohammed',password:'student123'},
+  {sid:4,email:'fatima',password:'student123'},
+  {sid:5,email:'yusuf',password:'student123'},
+];
+let tasks = [
+  {id:1,title:'Essay: Climate Change and Its Effects',due:'2025-03-15',to:'all',criteria:'Introduction, 3 body paragraphs, conclusion. Min 500 words.',
+   tpl:'<h2>Essay: Climate Change and Its Effects</h2><p><strong>Instructions:</strong> Write a formal essay about the causes and effects of climate change. Use proper paragraph structure.</p><p><strong>Requirements:</strong></p><ul><li>Introduction with a clear thesis statement</li><li>At least 3 body paragraphs with evidence and examples</li><li>Conclusion summarising your main points</li><li>Minimum 500 words</li></ul><hr/><p><br/></p>'},
+  {id:2,title:'Research Report: The Solar System',due:'2025-03-20',to:'all',criteria:'Use headings, table of contents, and bibliography.',
+   tpl:'<h2>Research Report: The Solar System</h2><p><strong>Instructions:</strong> Create a structured research report about the solar system. Include a table of contents, section headings, and a bibliography.</p><hr/><p><br/></p>'},
+];
+
+// Sources library for Citations & Bibliography
+let sources = [
+  {id:1,type:'book',author:'Smith, J.',year:'2021',title:'Climate Change and Society',publisher:'Oxford University Press',city:'Oxford',url:'',journal:'',volume:'',issue:'',pages:''},
+  {id:2,type:'journal',author:'Jones, A. & Brown, K.',year:'2020',title:'Effects of Global Warming on Ecosystems',publisher:'',city:'',url:'',journal:'Nature Climate Change',volume:'10',issue:'3',pages:'45-58'},
+  {id:3,type:'website',author:'NASA',year:'2023',title:'Global Climate Change: Vital Signs of the Planet',publisher:'',city:'',url:'https://climate.nasa.gov',journal:'',volume:'',issue:'',pages:''},
+];
+
+let CU=null,CR='student',currTask=null,currSt=null,wMode='student',cmts=[],astimer=null,selR=[];
+
+// Per-student per-task progress: taskProgress[studentId][taskId] = {status, doc, score, feedback, rewards, time, submitted, prog}
+let taskProgress = {};
+function tpGet(sid, tid){
+  if(!taskProgress[sid]) taskProgress[sid]={};
+  if(!taskProgress[sid][tid]) taskProgress[sid][tid]={status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0};
+  return taskProgress[sid][tid];
+}
+function tpSet(sid, tid, data){
+  if(!taskProgress[sid]) taskProgress[sid]={};
+  taskProgress[sid][tid]=Object.assign(tpGet(sid,tid), data);
+}
+// Seed from existing student data (for the first task)
+function seedTaskProgress(){
+  students.forEach(s=>{
+    tasks.forEach((t,i)=>{
+      // Only seed if not already set (preserve existing edits)
+      if(!taskProgress[s.id]||!taskProgress[s.id][t.id]){
+        if(i===0){
+          tpSet(s.id,t.id,{status:s.status||'not_started',doc:s.doc||'',score:s.score,feedback:s.feedback||'',rewards:s.rewards||[],time:s.time||0,submitted:s.submitted||null,prog:s.prog||0});
+        } else {
+          tpSet(s.id,t.id,{status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0});
+        }
+      }
+    });
+  });
+}
+let citStyle='APA'; // current citation style
+let nextSid=6,nextSrcId=4;
+const COLORS=['#1565C0','#2e7d32','#6a1b9a','#c62828','#e65100','#00695c','#ad1457','#4527a0','#00838f','#558b2f'];
+
+// =============================================
+// LOGIN
+// =============================================
+function setRole(r){
+  CR=r;
+  document.getElementById('tabT').classList.toggle('active',r==='teacher');
+  document.getElementById('tabS').classList.toggle('active',r==='student');
+  // Teacher: hide username, show only password
+  const lfU=document.getElementById('lfUsername');
+  if(r==='teacher'){
+    lfU.style.display='none';
+    document.getElementById('lp').placeholder='Enter teacher password';
+    document.getElementById('loginHint').innerHTML='Password: <b>teacher123</b>';
+  } else {
+    lfU.style.display='block';
+    document.getElementById('lu').placeholder='e.g. ahmed';
+    document.getElementById('lp').placeholder='Enter password';
+    // Rebuild student hints from live accounts
+    updateLoginHint();
+  }
+  document.getElementById('loginErr').style.display='none';
+}
+function doLogin(){
+  const p=document.getElementById('lp').value;
+  const errEl=document.getElementById('loginErr');
+  if(CR==='teacher'){
+    if(p==='teacher123'){
+      errEl.style.display='none';
+      CU={role:'teacher',name:'Ms. Johnson'};
+      openT();
+      return;
+    }
+    errEl.style.display='block';
+    errEl.textContent='Incorrect password. Please try again.';
+    return;
+  }
+  // Student login
+  const e=document.getElementById('lu').value.trim().toLowerCase();
+  const acc=userAccounts.find(a=>a.email===e&&a.password===p);
+  if(!acc){errEl.style.display='block';errEl.textContent='Invalid username or password.';return;}
+  const st=students.find(s=>s.id===acc.sid);
+  if(!st){errEl.style.display='block';errEl.textContent='Student account not found.';return;}
+  errEl.style.display='none';
+  CU={role:'student',name:st.name,sid:st.id};
+  openS();
+}
+function doLogout(){
+  CU=null;
+  document.getElementById('lu').value='';
+  document.getElementById('lp').value='';
+  document.getElementById('loginErr').style.display='none';
+  CR='student';
+  document.getElementById('tabT').classList.remove('active');
+  document.getElementById('tabS').classList.add('active');
+  document.getElementById('lfUsername').style.display='block';
+  document.getElementById('lp').placeholder='Enter password';
+  updateLoginHint();
+  showSc('loginScreen');
+}
+function showSc(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+
+// =============================================
+// TEACHER DASHBOARD
+// =============================================
+function openT(){seedTaskProgress();document.getElementById('tName').textContent=CU.name;showSc('teacherScreen');tTab('overview',document.querySelector('#teacherScreen .nav-item'));}
+const TTITLES={overview:'Dashboard Overview',students:'Students',manage:'Manage Users & Passwords',tasks:'Tasks & Assignments',analytics:'Analytics',create:'Create Document',export:'Export Results'};
+
+function tTab(tab,btn){
+  document.querySelectorAll('#teacherScreen .nav-item').forEach(n=>n.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  else{document.querySelectorAll('#teacherScreen .nav-item').forEach(n=>{if(n.textContent.trim().startsWith(TTITLES[tab]?.charAt(0)))n.classList.add('active');});}
+  document.getElementById('tTabTitle').textContent=TTITLES[tab]||tab;
+  const hdr=document.getElementById('tHdrBtns');
+  hdr.innerHTML=`<button class="btn btn-primary" onclick="openM('mTask')">+ New Task</button><button class="btn" onclick="dlCSV()">📥 Export CSV</button>`;
+  const c=document.getElementById('tContent');
+  if(tab==='overview')c.innerHTML=rOverview();
+  else if(tab==='students')c.innerHTML=rStudents();
+  else if(tab==='manage')c.innerHTML=rManage();
+  else if(tab==='tasks')c.innerHTML=rTasks();
+  else if(tab==='analytics')c.innerHTML=rAnalytics();
+  else if(tab==='create')c.innerHTML=rCreate();
+  else if(tab==='export')c.innerHTML=rExport();
+}
+
+function bdg(st){const m={submitted:'bs',in_progress:'bi',not_started:'bn',opened:'bo'};return`<span class="badge ${m[st]||'bn'}">${st.replace('_',' ')}</span>`;}
+function avHTML(s){return`<span class="av" style="background:${s.col}">${s.av}</span>`;}
+function progHTML(p){return`<div style="display:flex;align-items:center;gap:6px"><div class="pbar" style="width:90px"><div class="pfill" style="width:${p}%"></div></div><span style="font-size:11px;color:#777">${p}%</span></div>`;}
+
+function rOverview(){
+  // Aggregate across all tasks for overview stats
+  const allTp=students.map(s=>tpGet(s.id, tasks[0]?.id||0));
+  const sub=allTp.filter(p=>p.status==='submitted').length;
+  const inp=allTp.filter(p=>p.status==='in_progress'||p.status==='opened').length;
+  const scored=allTp.filter(p=>p.score!==null);
+  const avg=scored.length?Math.round(scored.reduce((a,p)=>a+p.score,0)/scored.length):0;
+  return`<div class="stats-row">
+    <div class="stat-card"><div class="stat-lbl">Total Students</div><div class="stat-val">${students.length}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Submitted</div><div class="stat-val" style="color:#2e7d32">${sub}</div></div>
+    <div class="stat-card"><div class="stat-lbl">In Progress</div><div class="stat-val" style="color:#e65100">${inp}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Avg Score</div><div class="stat-val">${avg}%</div></div>
+  </div>
+  <div style="font-weight:600;font-size:14px;margin-bottom:10px">Student Activity</div>
+  <table class="dtable"><thead><tr><th>Student</th><th>Class</th><th>Status</th><th>Progress</th><th>Score</th><th>Time</th><th>Actions</th></tr></thead><tbody>
+  ${students.map(s=>{const tp=tpGet(s.id,tasks[0]?.id||0);return`<tr><td>${avHTML(s)}${s.name}</td><td>${s.cls}</td><td>${bdg(tp.status)}</td><td>${progHTML(tp.prog)}</td><td>${tp.score!==null?'<strong>'+tp.score+'</strong>':'—'}</td><td>${tp.time}min</td><td style="display:flex;gap:4px"><button class="btn btn-primary btn-sm" onclick="openWord(${s.id})">Open Work</button><button class="btn btn-sm" onclick="openFb(${s.id})">Feedback</button></td></tr>`;}).join('')}
+  </tbody></table>`;
+}
+
+function rStudents(){
+  return`<table class="dtable"><thead><tr><th>Student</th><th>Class</th><th>Task</th><th>Status</th><th>Score</th><th>Feedback</th><th>Rewards</th><th>Actions</th></tr></thead><tbody>
+  ${students.flatMap(s=>tasks.map(t=>{const tp=tpGet(s.id,t.id);return`<tr><td>${avHTML(s)}${s.name}</td><td>${s.cls}</td><td style="font-size:12px;color:#555;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</td><td>${bdg(tp.status)}</td><td>${tp.score!==null?"<strong>"+tp.score+"/100</strong>":"—"}</td><td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${tp.feedback||"—"}</td><td>${(tp.rewards||[]).join(" ")||"—"}</td><td style="display:flex;gap:4px"><button class="btn btn-primary btn-sm" onclick="openWord(${s.id},${t.id})">Review</button><button class="btn btn-sm" onclick="openFb(${s.id},${t.id})">Feedback</button></td></tr>`;})).join("")}
+  </tbody></table>`;
+}
+
+// ---- MANAGE USERS ----
+function rManage(){
+  const hint=userAccounts.map(a=>{const st=students.find(s=>s.id===a.sid);return st?`<b>${a.email}</b>/${a.password}`:null;}).filter(Boolean).join(' · ');
+  return`
+  <div style="background:#e3f2fd;border:1px solid #90caf9;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px">
+    <strong>Current Student Logins:</strong> ${hint}
+  </div>
+  <div class="sm-card">
+    <div class="sm-hdr">
+      <span class="sm-hdr-title">👥 Student Accounts (${students.length})</span>
+      <button class="btn btn-primary btn-sm" onclick="openAddStudent()">+ Add Student</button>
+    </div>
+    ${students.map(s=>{
+      const acc=userAccounts.find(a=>a.sid===s.id);
+      return`<div class="sm-row">
+        <span class="av" style="background:${s.col};width:34px;height:34px;font-size:13px">${s.av}</span>
+        <div class="sm-info">
+          <div class="sm-name">${s.name}</div>
+          <div class="sm-meta">Class: ${s.cls} &nbsp;|&nbsp; Username: <b>${acc?.email||'—'}</b> &nbsp;|&nbsp; Password: <b>${acc?.password||'—'}</b></div>
+        </div>
+        <div class="sm-actions">
+          <button class="btn btn-sm" onclick="openEditStudent(${s.id})">✏️ Edit</button>
+          <button class="btn btn-red btn-sm" onclick="deleteStudent(${s.id})">🗑 Delete</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function openAddStudent(){
+  document.getElementById('mStTitle').textContent='Add New Student';
+  document.getElementById('mStId').value='';
+  document.getElementById('mStName').value='';
+  document.getElementById('mStClass').value='Grade 10A';
+  document.getElementById('mStUser').value='';
+  document.getElementById('mStPass').value='student123';
+  openM('mStudent');
+}
+function openEditStudent(id){
+  const sid=+id;
+  const st=students.find(s=>s.id===sid);
+  if(!st){alert('Student not found.');return;}
+  const acc=userAccounts.find(a=>a.sid===sid);
+  document.getElementById('mStTitle').textContent='Edit Student';
+  document.getElementById('mStId').value=sid;
+  document.getElementById('mStName').value=st.name;
+  document.getElementById('mStClass').value=st.cls;
+  document.getElementById('mStUser').value=acc?.email||'';
+  document.getElementById('mStPass').value=acc?.password||'';
+  openM('mStudent');
+}
+function refreshManage(){
+  // Reliably re-render the Manage tab and highlight its nav item
+  const manageBtn=[...document.querySelectorAll('#teacherScreen .nav-item')].find(b=>b.textContent.includes('Manage'));
+  document.querySelectorAll('#teacherScreen .nav-item').forEach(n=>n.classList.remove('active'));
+  if(manageBtn) manageBtn.classList.add('active');
+  document.getElementById('tTabTitle').textContent='Manage Users & Passwords';
+  document.getElementById('tContent').innerHTML=rManage();
+  updateLoginHint();
+}
+function saveStudent(){
+  const id=document.getElementById('mStId').value;
+  const name=document.getElementById('mStName').value.trim();
+  const cls=document.getElementById('mStClass').value.trim();
+  const email=document.getElementById('mStUser').value.trim().toLowerCase();
+  const pass=document.getElementById('mStPass').value.trim();
+  if(!name){alert('Please enter the student full name.');return;}
+  if(!cls){alert('Please enter the class / group.');return;}
+  if(!email){alert('Please enter a username.');return;}
+  if(!pass){alert('Please enter a password.');return;}
+  // Check username not already taken by another account
+  const dupAcc=userAccounts.find(a=>a.email===email&&(!id||a.sid!==+id));
+  if(dupAcc){alert('Username "'+email+'" is already taken. Please choose a different username.');return;}
+  if(id){
+    // ── EDIT existing student ──
+    const sid=+id;
+    const st=students.find(s=>s.id===sid);
+    if(st){
+      const oldName=st.name;
+      st.name=name;
+      st.cls=cls;
+      st.av=name.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2);
+    }
+    const acc=userAccounts.find(a=>a.sid===sid);
+    if(acc){acc.email=email;acc.password=pass;}
+  } else {
+    // ── ADD new student ──
+    const newId=nextSid++;
+    const col=COLORS[newId%COLORS.length];
+    const newSt={id:newId,name,cls,av:name.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2),col,prog:0,status:'not_started',score:null,feedback:'',rewards:[],time:0,submitted:null,doc:''};
+    students.push(newSt);
+    userAccounts.push({sid:newId,email,password:pass});
+    // Seed task progress for new student so they appear in stats
+    tasks.forEach(t=>tpSet(newId,t.id,{status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0}));
+  }
+  closeM('mStudent');
+  refreshManage();
+}
+function deleteStudent(id){
+  const sid=+id;
+  const st=students.find(s=>s.id===sid);
+  if(!st){alert('Student not found.');return;}
+  if(!confirm('Delete "'+st.name+'"? All their data will be removed permanently.'))return;
+  students=students.filter(s=>s.id!==sid);
+  userAccounts=userAccounts.filter(a=>a.sid!==sid);
+  // Clean up task progress
+  delete taskProgress[sid];
+  refreshManage();
+}
+function updateLoginHint(){
+  if(document.getElementById("loginHint")){
+    const h=userAccounts.slice(0,3).map(a=>`<b>${a.email}</b>/${a.password}`).join(", ")+(userAccounts.length>3?"...":"");
+    if(CR!=="teacher") document.getElementById("loginHint").innerHTML="Students: "+h;
+  }
+}
+
+function rTasks(){
+  if(!tasks.length) return `
+    <div style="background:white;border-radius:8px;padding:40px;text-align:center;border:1px solid #e0e0e0;margin-bottom:16px">
+      <div style="font-size:40px;margin-bottom:10px">📋</div>
+      <div style="font-size:15px;font-weight:600;color:#555;margin-bottom:6px">No tasks yet</div>
+      <div style="font-size:13px;color:#aaa;margin-bottom:16px">Create your first task to assign to students.</div>
+      <button class="btn btn-primary" onclick="openM('mTask')">+ Create First Task</button>
+    </div>`;
+
+  const taskRows = tasks.map(t=>{
+    // Count submissions for this task
+    const submitted = students.filter(s=>tpGet(s.id,t.id).status==='submitted').length;
+    const inProg    = students.filter(s=>tpGet(s.id,t.id).status==='in_progress'||tpGet(s.id,t.id).status==='opened').length;
+    const notStart  = students.filter(s=>tpGet(s.id,t.id).status==='not_started').length;
+    return `
+    <div class="task-card" id="taskcard-${t.id}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <h3 style="margin:0">${t.title}</h3>
+            ${t.uploaded?'<span style="font-size:11px;background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:10px;font-weight:600">📂 Uploaded</span>':''}
+          </div>
+          <div class="tmeta" style="margin-bottom:4px">
+            <span>📅 ${t.due||'No due date'}</span>
+            <span>👥 ${t.to}</span>
+          </div>
+          <div style="font-size:12px;color:#888;margin-bottom:8px">${t.criteria||''}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span style="font-size:11px;background:#e8f5e9;color:#2e7d32;padding:2px 9px;border-radius:10px;font-weight:600">✔ ${submitted} submitted</span>
+            <span style="font-size:11px;background:#fff3e0;color:#e65100;padding:2px 9px;border-radius:10px;font-weight:600">✏ ${inProg} in progress</span>
+            <span style="font-size:11px;background:#f5f5f5;color:#888;padding:2px 9px;border-radius:10px;font-weight:600">○ ${notStart} not started</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;align-items:stretch;min-width:120px">
+          <button class="btn btn-primary btn-sm" onclick="openWordT(${t.id})">✏ Open in Word</button>
+          <button class="btn btn-sm" onclick="openAssign(${t.id})">📤 Assign</button>
+          <button class="btn btn-red btn-sm" onclick="deleteTask(${t.id})" style="font-size:12px">🗑 Delete Task</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const footer = `
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="openM('mTask')">+ New Task</button>
+      ${tasks.length>0?`<button class="btn btn-red" onclick="clearAllTasks()" style="margin-left:auto">🗑 Clear All Tasks</button>`:''}
+    </div>`;
+
+  return taskRows + footer;
+}
+function deleteTask(tid){
+  const t=tasks.find(x=>x.id===tid);
+  if(!t){alert('Task not found.');return;}
+  if(!confirm('Delete "'+t.title+'"?\nThis will remove the task and all student progress for it.'))return;
+  // Remove from tasks array
+  tasks=tasks.filter(x=>x.id!==tid);
+  // Remove task progress for all students
+  students.forEach(s=>{
+    if(taskProgress[s.id]) delete taskProgress[s.id][tid];
+  });
+  // Re-render tasks tab
+  const btn=[...document.querySelectorAll('#teacherScreen .nav-item')].find(b=>b.textContent.includes('Task'));
+  document.querySelectorAll('#teacherScreen .nav-item').forEach(n=>n.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('tTabTitle').textContent='Tasks & Assignments';
+  document.getElementById('tContent').innerHTML=rTasks();
+}
+
+function clearAllTasks(){
+  if(!tasks.length){alert('No tasks to clear.');return;}
+  if(!confirm('Clear ALL '+tasks.length+' task(s)?\nThis will permanently delete every task and all student progress. This cannot be undone.'))return;
+  // Second confirmation for safety
+  if(!confirm('Are you absolutely sure? All student work will be lost.'))return;
+  tasks=[];
+  // Wipe all task progress
+  students.forEach(s=>{ taskProgress[s.id]={}; });
+  // Re-render tasks tab
+  const btn=[...document.querySelectorAll('#teacherScreen .nav-item')].find(b=>b.textContent.includes('Task'));
+  document.querySelectorAll('#teacherScreen .nav-item').forEach(n=>n.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('tTabTitle').textContent='Tasks & Assignments';
+  document.getElementById('tContent').innerHTML=rTasks();
+}
+
+function rAnalytics(){
+  const allTpA=students.map(s=>tpGet(s.id,tasks[0]?.id||0));
+  const scA=allTpA.filter(p=>p.score!==null);
+  const avg=scA.length?Math.round(scA.reduce((a,p)=>a+p.score,0)/scA.length):0;
+  const avgT=Math.round(allTpA.reduce((a,p)=>a+p.time,0)/allTpA.length)||0;
+  const rate=allTpA.length?Math.round(allTpA.filter(p=>p.status==='submitted').length/allTpA.length*100):0;
+  return`<div style="font-weight:600;font-size:14px;margin-bottom:12px">Completion by Student</div>
+  <div style="background:white;border-radius:8px;padding:16px;margin-bottom:16px;border:1px solid #e0e0e0">
+    ${students.map(s=>{const tp=tpGet(s.id,tasks[0]?.id||0);return`<div class="anarow"><div class="ananame">${avHTML(s)}${s.name.split(' ')[0]}</div><div class="anabar"><div class="anafill" style="width:${tp.prog}%;background:${tp.prog===100?'#2e7d32':'#1565C0'}">${tp.prog>12?tp.prog+'%':''}</div></div><div style="width:50px;font-size:12px;color:#777;text-align:right">${tp.time}min</div><div style="width:55px;font-size:12px;text-align:right">${tp.score?tp.score+'/100':'—'}</div></div>`;}).join('')}
+  </div>
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-lbl">Completion Rate</div><div class="stat-val">${rate}%</div></div>
+    <div class="stat-card"><div class="stat-lbl">Avg Time</div><div class="stat-val">${avgT}<span style="font-size:14px;font-weight:400">min</span></div></div>
+    <div class="stat-card"><div class="stat-lbl">Avg Score</div><div class="stat-val">${avg}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Not Started</div><div class="stat-val" style="color:#c62828">${allTpA.filter(p=>p.status==='not_started').length}</div></div>
+  </div>`;
+}
+function rCreate(){
+  return`
+  <!-- Action buttons row -->
+  <div style="background:white;border-radius:8px;padding:16px;border:1px solid #e0e0e0;margin-bottom:16px">
+    <p style="font-size:13px;color:#555;margin-bottom:12px">Create or upload document templates to assign to students. Each student receives their own editable copy.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="openM('mTask')">+ New Task Template</button>
+      <button class="btn" onclick="openWordBlank()">Open Blank Word</button>
+      <button class="btn" style="border-color:#2e7d32;color:#2e7d32;font-weight:600" onclick="document.getElementById('uploadDocInput').click()">📂 Upload Document</button>
+    </div>
+  </div>
+
+  <!-- Upload drop zone -->
+  <div id="uploadZone" style="display:none;background:#f0f7ff;border:2px dashed #90caf9;border-radius:8px;padding:24px;margin-bottom:16px;text-align:center">
+    <div style="font-size:32px;margin-bottom:8px">📄</div>
+    <div style="font-size:14px;font-weight:600;color:#1565C0;margin-bottom:4px">Document uploaded!</div>
+    <div style="font-size:12px;color:#555;margin-bottom:12px" id="uploadFileName">—</div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="saveUploadedAsTask()">✔ Save as Task &amp; Assign to All Students</button>
+      <button class="btn" onclick="previewUploadedDoc()">👁 Preview in Word</button>
+      <button class="btn" onclick="discardUpload()" style="color:#c62828;border-color:#c62828">✕ Discard</button>
+    </div>
+  </div>
+
+  <div style="font-weight:600;font-size:14px;margin-bottom:10px">Templates (${tasks.length})</div>
+  ${tasks.map(t=>`
+    <div style="background:white;border-radius:8px;padding:13px;margin-bottom:10px;border:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div style="flex:1;min-width:0">
+        <strong style="font-size:14px">${t.title}</strong>
+        <div style="font-size:12px;color:#888;margin-top:2px">${t.criteria||'No criteria set'}</div>
+        ${t.uploaded?'<span style="font-size:11px;background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:10px;font-weight:600;display:inline-block;margin-top:4px">📂 Uploaded</span>':''}
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-primary btn-sm" onclick="openWordT(${t.id})">Edit</button>
+        <button class="btn btn-sm" onclick="openAssign(${t.id})">Assign</button>
+      </div>
+    </div>`).join('')}`;
+}
+function rExport(){
+  return`<div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+    <button class="btn btn-primary" onclick="dlCSV()">📥 Download CSV</button>
+    <span style="font-size:12px;color:#777">Downloads all student results — opens in Excel</span>
+  </div>
+  <div style="overflow-x:auto"><table class="etable">
+    <thead><tr><th>Student</th><th>Class</th><th>Task</th><th>Status</th><th>Score</th><th>Feedback</th><th>Rewards</th><th>Time</th><th>Submitted</th></tr></thead>
+    <tbody>${students.flatMap(s=>tasks.map(t=>{const tp=tpGet(s.id,t.id);return`<tr><td>${s.name}</td><td>${s.cls}</td><td>${t.title}</td><td>${bdg(tp.status)}</td><td>${tp.score!==null?tp.score:'—'}</td><td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${tp.feedback||'—'}</td><td>${(tp.rewards||[]).join(' ')||'—'}</td><td>${tp.time}min</td><td>${tp.submitted||'—'}</td></tr>`;})).join('')}
+    </tbody></table></div>`;
+}
+
+// =============================================
+// STUDENT DASHBOARD
+// =============================================
+function openS(){seedTaskProgress();
+  const st=students.find(s=>s.id===CU.sid);if(!st)return;
+  document.getElementById('ssAv').textContent=st.av;
+  document.getElementById('ssNm').textContent=st.name;
+  document.getElementById('ssCl').textContent=st.cls;
+  document.getElementById('ssPf').style.width=st.prog+'%';
+  document.getElementById('ssPl').textContent=st.prog+'% complete';
+  document.getElementById('sWelcome').textContent='Welcome, '+st.name.split(' ')[0]+'!';
+  rStudent();showSc('studentScreen');
+}
+function rStudent(){
+  const st=students.find(s=>s.id===CU.sid);if(!st)return;
+  const myTps=tasks.map(t=>tpGet(st.id,t.id));
+  const sub=myTps.filter(p=>p.status==='submitted').length;
+  const avgSc=myTps.filter(p=>p.score!==null);
+  const myAvg=avgSc.length?Math.round(avgSc.reduce((a,p)=>a+p.score,0)/avgSc.length):null;
+  // Update sidebar progress
+  const totalProg=myTps.length?Math.round(myTps.reduce((a,p)=>a+p.prog,0)/myTps.length):0;
+  const pf=document.getElementById('ssPf');const pl=document.getElementById('ssPl');
+  if(pf)pf.style.width=totalProg+'%';if(pl)pl.textContent=totalProg+'% complete';
+  document.getElementById('sContent').innerHTML=`
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-lbl">Tasks Assigned</div><div class="stat-val">${tasks.length}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Completed</div><div class="stat-val" style="color:#2e7d32">${sub}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Pending</div><div class="stat-val" style="color:#e65100">${tasks.length-sub}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Avg Score</div><div class="stat-val">${myAvg!==null?myAvg:'—'}</div></div>
+  </div>
+  <div style="font-weight:600;font-size:14px;margin-bottom:12px">My Tasks</div>
+  ${tasks.map(t=>{const tp=tpGet(st.id,t.id);return`<div class="stask" onclick="openWordS(${t.id})">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <h3>${t.title}</h3>${bdg(tp.status)}
+    </div>
+    <div class="tmeta" style="margin-top:5px">
+      <span>📅 ${t.due||'No due date'}</span>
+      <span>⏱ ${tp.time}min spent</span>
+      <span>📝 ${tp.prog}% done</span>
+    </div>
+    ${tp.score!==null?`<div style="margin-top:7px;font-size:13px;font-weight:700;color:#2e7d32">Score: ${tp.score}/100</div>`:''}
+    ${tp.feedback?`<div class="fbbox">💬 ${tp.feedback}</div>`:''}
+    ${(tp.rewards||[]).length?`<div class="rwrow">${tp.rewards.map(r=>`<span class="rbadge">${r}</span>`).join('')}</div>`:''}
+    <div style="margin-top:9px;font-size:12px;color:#1565C0;font-weight:600">
+      ${tp.status==='submitted'?'✅ Submitted — view your work':'Click to open in Word Simulator →'}
+    </div>
+  </div>`;}).join('')}`;
+}
+
+// =============================================
+// WORD SIMULATOR — OPEN
+// =============================================
+function showStudentTab(tab, btn){
+  // Update sidebar active state
+  document.querySelectorAll('#sStudentNav .nav-item').forEach(n=>n.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  // Update header
+  const titles={tasks:'My Tasks',rewards:'My Rewards',feedback:'My Feedback'};
+  document.getElementById('sWelcome').textContent=titles[tab]||'';
+  // Render content
+  if(tab==='tasks') rStudent();
+  else if(tab==='rewards') renderStudentRewards();
+  else if(tab==='feedback') renderStudentFeedback();
+}
+
+function renderStudentRewards(){
+  const st=students.find(s=>s.id===CU.sid); if(!st) return;
+  // Collect all rewards across all tasks
+  const allRewards=[];
+  tasks.forEach(t=>{
+    const tp=tpGet(st.id,t.id);
+    if(tp.rewards&&tp.rewards.length){
+      allRewards.push({task:t.title, rewards:tp.rewards, score:tp.score, status:tp.status});
+    }
+  });
+  const totalStars=allRewards.reduce((a,r)=>a+r.rewards.filter(x=>x==='⭐').length,0);
+  const totalTrophies=allRewards.reduce((a,r)=>a+r.rewards.filter(x=>x==='🏆').length,0);
+  document.getElementById('sContent').innerHTML=`
+  <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
+    <div class="stat-card"><div class="stat-lbl">Total Rewards</div><div class="stat-val">${allRewards.reduce((a,r)=>a+r.rewards.length,0)}</div></div>
+    <div class="stat-card"><div class="stat-lbl">⭐ Stars</div><div class="stat-val" style="color:#FFC107">${totalStars}</div></div>
+    <div class="stat-card"><div class="stat-lbl">🏆 Trophies</div><div class="stat-val" style="color:#e65100">${totalTrophies}</div></div>
+  </div>
+  ${allRewards.length===0?`
+    <div style="background:white;border-radius:8px;padding:40px;text-align:center;border:1px solid #e0e0e0">
+      <div style="font-size:48px;margin-bottom:12px">🏆</div>
+      <div style="font-size:15px;font-weight:600;color:#555">No rewards yet</div>
+      <div style="font-size:13px;color:#aaa;margin-top:6px">Complete your tasks to earn rewards from your teacher!</div>
+    </div>`:
+    allRewards.map(r=>`
+    <div style="background:white;border-radius:8px;padding:16px;margin-bottom:12px;border:1px solid #e0e0e0">
+      <div style="font-size:13px;font-weight:600;color:#1565C0;margin-bottom:8px">${r.task}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        ${r.rewards.map(rw=>`<span style="font-size:28px">${rw}</span>`).join('')}
+        ${r.score!==null?`<span style="margin-left:auto;background:#e8f5e9;color:#2e7d32;padding:4px 12px;border-radius:12px;font-size:13px;font-weight:700">Score: ${r.score}/100</span>`:''}
+      </div>
+    </div>`).join('')
+  }`;
+}
+
+function renderStudentFeedback(){
+  const st=students.find(s=>s.id===CU.sid); if(!st) return;
+  // Collect all feedback across all tasks
+  const allFb=tasks.map(t=>{
+    const tp=tpGet(st.id,t.id);
+    return {task:t.title, feedback:tp.feedback, score:tp.score, status:tp.status, rewards:tp.rewards||[], submitted:tp.submitted};
+  }).filter(f=>f.feedback||f.score!==null||f.rewards.length);
+
+  document.getElementById('sContent').innerHTML=`
+  <div style="font-weight:600;font-size:14px;margin-bottom:14px;color:#111">Feedback from your teacher</div>
+  ${allFb.length===0?`
+    <div style="background:white;border-radius:8px;padding:40px;text-align:center;border:1px solid #e0e0e0">
+      <div style="font-size:48px;margin-bottom:12px">💬</div>
+      <div style="font-size:15px;font-weight:600;color:#555">No feedback yet</div>
+      <div style="font-size:13px;color:#aaa;margin-top:6px">Your teacher will leave feedback once you submit your work.</div>
+    </div>`:
+    allFb.map(f=>`
+    <div style="background:white;border-radius:8px;padding:18px;margin-bottom:14px;border:1px solid #e0e0e0;border-left:4px solid #1565C0">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div style="font-size:14px;font-weight:700;color:#1565C0">${f.task}</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${f.score!==null?`<span style="background:#e8f5e9;color:#2e7d32;padding:4px 12px;border-radius:12px;font-size:13px;font-weight:700">Score: ${f.score}/100</span>`:''}
+          <span style="font-size:11px;background:#f5f5f5;color:#888;padding:3px 8px;border-radius:10px">${f.status.replace('_',' ')}</span>
+        </div>
+      </div>
+      ${f.feedback?`
+      <div style="background:#fff8e1;border-left:3px solid #FFC107;padding:10px 12px;border-radius:4px;font-size:13px;color:#333;line-height:1.6;margin-bottom:8px">
+        <strong style="color:#555;font-size:11px;display:block;margin-bottom:4px">TEACHER COMMENT</strong>
+        ${f.feedback}
+      </div>`:''}
+      ${f.rewards.length?`<div style="display:flex;gap:6px;margin-top:6px">${f.rewards.map(r=>`<span style="font-size:22px">${r}</span>`).join('')}</div>`:''}
+      ${f.submitted?`<div style="font-size:11px;color:#aaa;margin-top:8px">Submitted: ${f.submitted}</div>`:''}
+    </div>`).join('')
+  }`;
+}
+
+function openWordS(taskId){
+  const t=tasks.find(x=>x.id===taskId);const st=students.find(s=>s.id===CU.sid);
+  if(!t||!st)return;
+  const tp=tpGet(st.id,t.id);
+  currTask=t;currSt=st;wMode='student';
+  document.getElementById('wTitle').textContent=(t.title||'Document')+' – Word 2019 Simulator';
+  document.getElementById('wRole').textContent='Student Copy';
+  // If already submitted, make read-only
+  const readOnly=tp.status==='submitted';
+  document.getElementById('submitBtn').style.display=readOnly?'none':'inline-block';
+  cmts=[];
+  // Load student's saved doc or fall back to template
+  document.getElementById('docEd').innerHTML=tp.doc||t.tpl||'';
+  document.getElementById('pgHdr').textContent='';document.getElementById('pgFtr').textContent='';
+  document.getElementById('docEd').contentEditable=readOnly?'false':'true';
+  if(readOnly) document.getElementById('wRole').textContent='✅ Submitted — read only';
+  closeSP();document.getElementById('fbPanel').classList.remove('open');
+  setupEditorEvents();rFbPanel(st);
+  showSc('wordScreen');rTab('home',document.querySelector('.ribbon-tab'));
+}
+function openWord(sid, taskId){
+  const st=students.find(s=>s.id===sid);
+  const t=taskId?tasks.find(x=>x.id===taskId):tasks[0];
+  if(!st||!t)return;
+  const tp=tpGet(st.id,t.id);
+  currTask=t;currSt=st;wMode='teacher';
+  document.getElementById('wTitle').textContent=st.name+' – '+t.title;
+  document.getElementById('wRole').textContent='Teacher Reviewing: '+st.name+' | '+bdgText(tp.status);
+  document.getElementById('submitBtn').style.display='none';
+  // Add Save Template button for teacher
+  const sbr=document.querySelector('.sbr');
+  const oldSab=document.getElementById('saveAssignBtn');if(oldSab)oldSab.remove();
+  if(sbr){const sb=document.createElement('button');sb.id='saveAssignBtn';sb.className='btn btn-green btn-sm';sb.textContent='💾 Save Feedback';sb.onclick=()=>{autoSave();showSaveIndicator();};sbr.insertBefore(sb,sbr.firstChild);}
+  cmts=[];
+  document.getElementById('docEd').innerHTML=tp.doc||t.tpl||'';
+  document.getElementById('docEd').contentEditable='true';
+  closeSP();document.getElementById('fbPanel').classList.remove('open');
+  setupEditorEvents();rFbPanel(st);
+  showSc('wordScreen');rTab('home',document.querySelector('.ribbon-tab'));
+}
+function bdgText(st){return st.replace('_',' ');}
+function openWordT(taskId){
+  const t=tasks.find(x=>x.id===taskId);
+  if(!t){alert('Task not found.');return;}
+  currTask=t;currSt=null;wMode='teacher';
+  document.getElementById('wTitle').textContent=(t.title||'Document')+' – Template Editor';
+  document.getElementById('wRole').textContent='Teacher Mode — edits auto-save';
+  document.getElementById('submitBtn').style.display='none';
+  // Show Save Template button
+  const sbr=document.querySelector('.sbr');
+  const old=document.getElementById('saveAssignBtn');if(old)old.remove();
+  if(sbr){
+    const sb=document.createElement('button');
+    sb.id='saveAssignBtn';
+    sb.className='btn btn-green btn-sm';
+    sb.textContent='💾 Save Template';
+    sb.onclick=()=>{autoSave();showSaveIndicator();};
+    sbr.insertBefore(sb,sbr.firstChild);
+  }
+  cmts=[];
+  document.getElementById('docEd').innerHTML=t.tpl||'';
+  document.getElementById('docEd').contentEditable='true';
+  closeSP();document.getElementById('fbPanel').classList.remove('open');
+  setupEditorEvents();document.getElementById('fbTeacher').innerHTML='';
+  showSc('wordScreen');rTab('home',document.querySelector('.ribbon-tab'));
+}
+function openWordBlank(){
+  currTask={title:'New Document',tpl:''};currSt=null;wMode='teacher';
+  document.getElementById('wTitle').textContent='New Document – Word 2019 Simulator';
+  document.getElementById('wRole').textContent='Teacher Mode';
+  document.getElementById('submitBtn').style.display='none';
+  document.getElementById('docEd').innerHTML='';
+  document.getElementById('docEd').contentEditable='true';
+  closeSP();setupEditorEvents();
+  showSc('wordScreen');rTab('home',document.querySelector('.ribbon-tab'));
+}
+function setupEditorEvents(){
+  const ed=document.getElementById('docEd');
+  ed.oninput=()=>{wCount();trigAS();};
+  ed.onkeyup=ed.onmouseup=updFmt;
+  wCount();
+}
+function rFbPanel(st){
+  if(!st){document.getElementById('fbTeacher').innerHTML='';return;}
+  if(wMode==='teacher'){
+    const tp=currTask?tpGet(st.id,currTask.id):{score:null,feedback:'',rewards:[]};
+    document.getElementById('fbTeacher').innerHTML=`
+      <div style="margin-bottom:10px">
+        <div class="ff" style="margin-bottom:8px"><label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:3px">Score (/100)</label>
+          <input type="number" id="livScore" min="0" max="100" value="${tp.score||''}" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;outline:none;font-size:13px"/></div>
+        <div class="ff" style="margin-bottom:8px"><label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:3px">Feedback</label>
+          <textarea id="livFb" style="width:100%;height:60px;padding:6px;border:1px solid #ddd;border-radius:4px;resize:vertical;outline:none;font-size:12px">${tp.feedback||''}</textarea></div>
+        <div class="qtags" style="margin-bottom:8px">
+          <span class="qtag" onclick="addLivFb('Excellent work!')">✨ Excellent</span>
+          <span class="qtag" onclick="addLivFb('Good effort!')">👍 Good</span>
+          <span class="qtag" onclick="addLivFb('Needs revision.')">🔄 Revise</span>
+          <span class="qtag" onclick="addLivFb('Incomplete.')">⚠️ Incomplete</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">${['⭐','🏆','🎖','👏','💡'].map(r=>`<span style="font-size:20px;cursor:pointer;padding:3px;border-radius:4px;opacity:${(tp.rewards||[]).includes(r)?1:.3}" onclick="togLivR(this)">${r}</span>`).join('')}</div>
+        <button class="btn btn-primary" style="width:100%;font-size:12px" onclick="saveLivFb()">💾 Save Feedback</button>
+      </div><hr style="margin-bottom:8px"/>`;
+  } else {
+    const tp2=currTask?tpGet(st.id,currTask.id):{score:null,feedback:'',rewards:[]};
+    document.getElementById('fbTeacher').innerHTML=`${tp2.feedback?`<div class="fbbox">💬 <strong>Teacher:</strong> ${tp2.feedback}</div>`:''}${tp2.score?`<div style="font-weight:700;color:#2e7d32;margin:6px 0">Score: ${tp2.score}/100</div>`:''}${(tp2.rewards||[]).length?`<div style="font-size:18px;margin:4px 0">${tp2.rewards.join(' ')}</div>`:''}<hr style="margin:8px 0"/>`;
+  }
+}
+function addLivFb(t){const el=document.getElementById('livFb');if(el)el.value=(el.value?el.value+'\n':'')+t;}
+function togLivR(el){el.style.opacity=parseFloat(el.style.opacity||1)>0.5?'0.3':'1';}
+function saveLivFb(){
+  if(!currSt||!currTask)return;
+  const sc=document.getElementById('livScore')?.value;
+  const fb=document.getElementById('livFb')?.value;
+  const rwds=[];
+  document.querySelectorAll('#fbPanel [style*="cursor:pointer"]').forEach(el=>{
+    if(parseFloat(el.style.opacity||1)>0.5&&el.textContent.trim().length<=2)rwds.push(el.textContent.trim());
+  });
+  const update={};
+  if(sc) update.score=+sc;
+  if(fb) update.feedback=fb;
+  if(rwds.length) update.rewards=rwds;
+  tpSet(currSt.id, currTask.id, update);
+  showSaveIndicator();
+  alert('✅ Feedback saved for '+currSt.name);
+}
+function backFromWord(){
+  autoSave();
+  const sab=document.getElementById("saveAssignBtn");if(sab)sab.remove();
+  document.getElementById("fbPanel").classList.remove("open");
+  closeSP();
+  if(CU.role==="teacher"){showSc("teacherScreen");tTab("create",[...document.querySelectorAll("#teacherScreen .nav-item")].find(b=>b.textContent.includes("Create")));}
+  else{openS();}
+}
+function autoSave(){
+  const html=document.getElementById("docEd").innerHTML;
+  if(CU?.role==="student"&&currTask){
+    const tp=tpGet(CU.sid,currTask.id);
+    const newProg=Math.min((tp.prog||0)+3,95);
+    tpSet(CU.sid,currTask.id,{doc:html,status:tp.status==='not_started'?'in_progress':tp.status,prog:newProg,time:(tp.time||0)+1});
+  } else if(CU?.role==="teacher"&&currTask){
+    const t=tasks.find(x=>x.id===currTask.id);
+    if(t){t.tpl=html;showSaveIndicator();}
+    else if(currTask._isUploadPreview){currTask.tpl=html;if(uploadedDocData)uploadedDocData.html=html;showSaveIndicator();}
+  }
+}
+function showSaveIndicator(){
+  const el=document.getElementById("wRole");if(!el)return;
+  const prev=el.textContent;
+  el.textContent="✅ Saved";el.style.color="#A5D6A7";
+  setTimeout(()=>{el.textContent=prev;el.style.color="";},1500);
+}
+function trigAS(){clearTimeout(astimer);astimer=setTimeout(autoSave,2000);}
+function submitWork(){
+  if(!confirm('Submit your work? You cannot edit after submission.'))return;
+  if(!currTask)return;
+  const html=document.getElementById('docEd').innerHTML;
+  const today=new Date().toISOString().split('T')[0];
+  tpSet(CU.sid,currTask.id,{doc:html,status:'submitted',prog:100,submitted:today});
+  document.getElementById('docEd').contentEditable='false';
+  document.getElementById('submitBtn').style.display='none';
+  // Remove save button if present
+  const sab=document.getElementById('saveAssignBtn');if(sab)sab.remove();
+  // Go back to student dashboard and land on My Tasks tab
+  document.getElementById('fbPanel').classList.remove('open');
+  closeSP();
+  openS(); // re-renders dashboard with updated progress
+  // Show a success banner
+  setTimeout(()=>{
+    const c=document.getElementById('sContent');
+    if(!c)return;
+    const banner=document.createElement('div');
+    banner.style.cssText='background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px';
+    banner.innerHTML=`<div><strong style="color:#2e7d32;font-size:14px">✅ Work submitted successfully!</strong>
+      <div style="font-size:12px;color:#555;margin-top:2px">Your teacher will review it and leave feedback soon.</div></div>
+      <button class="btn btn-sm" onclick="this.parentElement.remove()">Dismiss</button>`;
+    c.insertBefore(banner,c.firstChild);
+  },100);
+}
+function wCount(){
+  const t=document.getElementById('docEd')?.innerText||'';
+  document.getElementById('wCount').textContent=t.trim().split(/\s+/).filter(w=>w).length+' words';
+}
+function setZoom(v){document.getElementById('zLbl').textContent=v+'%';document.getElementById('docPage').style.transform=`scale(${v/100})`;document.getElementById('docPage').style.transformOrigin='top center';}
+function toggleFb(){document.getElementById('fbPanel').classList.toggle('open');if(document.getElementById('fbPanel').classList.contains('open'))rCmts();}
+function closeFb(){document.getElementById('fbPanel').classList.remove('open');}
+function addCmt(){const inp=document.getElementById('cinp');const t=inp.value.trim();if(!t)return;cmts.push({text:t,by:CU.name,time:new Date().toLocaleTimeString()});inp.value='';rCmts();}
+function rCmts(){document.getElementById('fbComments').innerHTML=cmts.length?'<div style="font-size:11px;font-weight:600;color:#777;margin-bottom:5px">Comments</div>'+cmts.map(c=>`<div class="comment-item"><div class="ci-name">${c.by} <span style="font-weight:400;color:#ccc">${c.time}</span></div><div>${c.text}</div></div>`).join(''):'<div style="font-size:12px;color:#ccc;margin-bottom:6px">No comments yet.</div>';}
+
+// =============================================
+// SIDE PANEL helpers
+// =============================================
+function openSP(title,html){
+  document.getElementById('spTitle').innerHTML=title;
+  document.getElementById('spBody').innerHTML=html;
+  document.getElementById('sidePanel').classList.add('open');
+}
+function closeSP(){document.getElementById('sidePanel').classList.remove('open');}
+
+// =============================================
+// RIBBON
+// =============================================
+const RIBDATA={
+  home:`
+  <div class="rg">
+    <div class="rgbtns" style="gap:4px;align-items:center">
+      <select class="fsel" style="width:134px" id="rFontFam" onchange="execCmd('fontName',this.value)">
+        <option>Times New Roman</option><option>Calibri</option><option>Arial</option>
+        <option>Georgia</option><option>Courier New</option><option>Verdana</option><option>Tahoma</option>
+      </select>
+      <input class="sinp" type="number" id="rFontSz" value="16" min="6" max="96" onchange="apSize(this.value)"/>
+      <button class="rb" onclick="apSize(parseInt(document.getElementById('rFontSz').value)+1)" title="Increase font size" style="min-width:22px;padding:2px 4px">A▲</button>
+      <button class="rb" onclick="apSize(parseInt(document.getElementById('rFontSz').value)-1)" title="Decrease font size" style="min-width:22px;padding:2px 4px">A▼</button>
+    </div>
+    <div class="rgbtns" style="margin-top:3px;gap:2px">
+      <button class="rb" id="bBold" onclick="execCmd('bold')" title="Bold"><span class="rb-icon"><b>B</b></span></button>
+      <button class="rb" id="bItalic" onclick="execCmd('italic')" title="Italic"><span class="rb-icon"><i>I</i></span></button>
+      <button class="rb" id="bUnder" onclick="execCmd('underline')" title="Underline"><span class="rb-icon"><u>U</u></span></button>
+      <button class="rb" onclick="execCmd('strikeThrough')" title="Strikethrough"><span class="rb-icon"><s>ab</s></span></button>
+      <button class="rb" onclick="execCmd('superscript')" title="Superscript"><span class="rb-icon">x²</span></button>
+      <button class="rb" onclick="execCmd('subscript')" title="Subscript"><span class="rb-icon">x₂</span></button>
+      <input type="color" class="cinp" value="#000000" onchange="execCmd('foreColor',this.value)" title="Font Color" style="margin-top:1px"/>
+      <input type="color" class="cinp" value="#ffff00" onchange="execCmd('hiliteColor',this.value)" title="Text Highlight" style="margin-top:1px"/>
+    </div>
+    <div class="rglbl">Font</div>
+  </div>
+  <div class="rg">
+    <div class="rgbtns">
+      <button class="rb" onclick="execCmd('justifyLeft')" title="Align Left"><span class="rb-icon">≡L</span></button>
+      <button class="rb" onclick="execCmd('justifyCenter')" title="Center"><span class="rb-icon">≡C</span></button>
+      <button class="rb" onclick="execCmd('justifyRight')" title="Right"><span class="rb-icon">≡R</span></button>
+      <button class="rb" onclick="execCmd('justifyFull')" title="Justify"><span class="rb-icon">≡J</span></button>
+    </div>
+    <div class="rgbtns" style="margin-top:3px">
+      <button class="rb" onclick="execCmd('insertUnorderedList')" title="Bullets"><span class="rb-icon">• ≡</span></button>
+      <button class="rb" onclick="execCmd('insertOrderedList')" title="Numbering"><span class="rb-icon">1. ≡</span></button>
+      <button class="rb" onclick="execCmd('indent')" title="Increase Indent"><span class="rb-icon">→|</span></button>
+      <button class="rb" onclick="execCmd('outdent')" title="Decrease Indent"><span class="rb-icon">|←</span></button>
+    </div>
+    <div class="rglbl">Paragraph</div>
+  </div>
+  <div class="rg">
+    <div class="rgbtns" style="flex-direction:column;gap:2px;align-items:flex-start">
+      <button class="rb" style="width:100%;justify-content:flex-start;font-size:15px;font-weight:900;line-height:1" onclick="execCmd('formatBlock','H1')">Heading 1</button>
+      <button class="rb" style="width:100%;justify-content:flex-start;font-size:13px;font-weight:700;line-height:1" onclick="execCmd('formatBlock','H2')">Heading 2</button>
+      <button class="rb" style="width:100%;justify-content:flex-start;font-size:12px;font-weight:700;line-height:1" onclick="execCmd('formatBlock','H3')">Heading 3</button>
+      <button class="rb" style="width:100%;justify-content:flex-start;font-size:12px;line-height:1" onclick="execCmd('formatBlock','P')">Normal</button>
+    </div>
+    <div class="rglbl">Styles</div>
+  </div>
+  <div class="rg">
+    <div class="rgbtns">
+      <button class="rb" onclick="execCmd('copy')"><span class="rb-icon">📋</span><span class="rb-lbl">Copy</span></button>
+      <button class="rb" onclick="execCmd('cut')"><span class="rb-icon">✂</span><span class="rb-lbl">Cut</span></button>
+      <button class="rb" onclick="execCmd('undo')"><span class="rb-icon">↩</span><span class="rb-lbl">Undo</span></button>
+      <button class="rb" onclick="execCmd('redo')"><span class="rb-icon">↪</span><span class="rb-lbl">Redo</span></button>
+    </div>
+    <div class="rglbl">Clipboard</div>
+  </div>`,
+
+  insert:`
+  <div class="rg">
+    <div class="rgbtns">
+      <button class="rb rb-big" onclick="openM('mTable')"><span class="rb-icon">⊞</span><span class="rb-lbl">Table</span></button>
+      <button class="rb rb-big" onclick="insImg()"><span class="rb-icon">🖼</span><span class="rb-lbl">Image</span></button>
+    </div>
+    <div class="rglbl">Tables & Media</div>
+  </div>
+  <div class="rg">
+    <div class="rgbtns">
+      <button class="rb rb-big" onclick="setHdr()"><span class="rb-icon">📄</span><span class="rb-lbl">Header</span></button>
+      <button class="rb rb-big" onclick="setFtr()"><span class="rb-icon">📄</span><span class="rb-lbl">Footer</span></button>
+      <button class="rb rb-big" onclick="insPB()"><span class="rb-icon">⊕</span><span class="rb-lbl">Page Break</span></button>
+    </div>
+    <div class="rglbl">Header & Footer</div>
+  </div>
+  <div class="rg">
+    <div class="rgbtns">
+      <button class="rb rb-big" onclick="insLink()"><span class="rb-icon">🔗</span><span class="rb-lbl">Link</span></button>
+      <button class="rb rb-big" onclick="execCmd('insertHorizontalRule')"><span class="rb-icon">—</span><span class="rb-lbl">Line</span></button>
+      <button class="rb rb-big" onclick="insTB()"><span class="rb-icon">📦</span><span class="rb-lbl">Text Box</span></button>
+      <button class="rb rb-big" onclick="insSym()"><span class="rb-icon">Ω</span><span class="rb-lbl">Symbol</span></button>
+    </div>
+    <div class="rglbl">Links & Symbols</div>
+  </div>`,
+
+  design:`
+  <div class="rg">
+    <div class="rgbtns" style="gap:5px">
+      ${[['Default','#000','#fff'],['Blue','#1565C0','#e3f2fd'],['Green','#2e7d32','#e8f5e9'],['Red','#c62828','#ffebee'],['Dark','#eee','#212121'],['Sepia','#3e2723','#fdf5e6']].map(([n,f,b])=>`<button class="rb" style="flex-direction:row;gap:4px;padding:4px 8px" onclick="apTheme('${f}','${b}')"><span style="width:14px;height:14px;background:${b};border:1px solid ${f};border-radius:2px;display:inline-block"></span><span style="font-size:11px">${n}</span></button>`).join('')}
+    </div>
+    <div class="rglbl">Document Themes</div>
+  </div>`,
+
+  layout:`
+  <div class="rg">
+    <div class="rgbtns">
+      <button class="rb rb-big" onclick="insCols(2)"><span class="rb-icon">▋▋</span><span class="rb-lbl">Two Cols</span></button>
+      <button class="rb rb-big" onclick="insCols(3)"><span class="rb-icon">▋▋▋</span><span class="rb-lbl">Three Cols</span></button>
+    </div>
+    <div class="rglbl">Columns</div>
+  </div>
+  <div class="rg">
+    <div class="rgbtns">
+      <button class="rb rb-big" onclick="insPB()"><span class="rb-icon">⊕</span><span class="rb-lbl">Page Break</span></button>
+      <button class="rb rb-big" onclick="execCmd('insertHTML','<p style=\\'margin-left:48px;border-left:3px solid #ddd;padding-left:12px;font-style:italic;\\'>Block quote text here</p>')"><span class="rb-icon">❝</span><span class="rb-lbl">Quote</span></button>
+    </div>
+    <div class="rglbl">Layout</div>
+  </div>`,
+
+  references:`
+  <div class="rg">
+    <div class="rgbtns">
+      <button class="rb rb-big" onclick="insTOC()"><span class="rb-icon">📋</span><span class="rb-lbl">Table of Contents</span></button>
+    </div>
+    <div class="rglbl">Table of Contents</div>
+  </div>
+  <div class="rg">
+    <div class="rgbtns">
+      <button class="rb rb-big" onclick="insFN()"><span class="rb-icon">¹</span><span class="rb-lbl">Footnote</span></button>
+      <button class="rb rb-big" onclick="execCmd('insertHTML','<sup style=\\'color:#1565C0\\'>[en]</sup><p style=\\'font-size:11px;color:#555\\'><em>Endnote: type here</em></p>')"><span class="rb-icon">ⁿ</span><span class="rb-lbl">Endnote</span></button>
+    </div>
+    <div class="rglbl">Footnotes</div>
+  </div>
+  <div class="rg">
+    <div class="rgbtns">
+      <button class="rb rb-big" onclick="showInsertCitation()"><span class="rb-icon">📎</span><span class="rb-lbl">Insert Citation</span></button>
+      <button class="rb rb-big" onclick="showManageSources()"><span class="rb-icon">📚</span><span class="rb-lbl">Manage Sources</span></button>
+    </div>
+    <div class="rgbtns" style="margin-top:2px;align-items:center">
+      <span style="font-size:11px;color:#555;margin-right:2px">Style:</span>
+      <select class="style-sel" id="citStyleSel" onchange="citStyle=this.value;refreshCitationStyle()" style="width:70px">
+        <option value="APA">APA</option>
+        <option value="MLA">MLA</option>
+        <option value="Chicago">Chicago</option>
+        <option value="Harvard">Harvard</option>
+      </select>
+    </div>
+    <div class="rgbtns" style="margin-top:2px">
+      <button class="rb rb-big" onclick="insertBibliography()"><span class="rb-icon">📖</span><span class="rb-lbl">Bibliography</span></button>
+      <button class="rb rb-big" onclick="showChangeCitProvider()"><span class="rb-icon">⇄</span><span class="rb-lbl">Change Provider</span></button>
+    </div>
+    <div class="rglbl">Citations &amp; Bibliography</div>
+  </div>`,
+
+  mailings:`
+  <div class="rg">
+    <div class="rgbtns">
+      <button class="rb rb-big" onclick="execCmd('insertHTML','<p>Dear [Recipient],</p><p>[Body of letter]</p><p>Sincerely,<br>[Your Name]</p>')"><span class="rb-icon">✉</span><span class="rb-lbl">Letter Template</span></button>
+    </div>
+    <div class="rglbl">Mailings</div>
+  </div>`,
+
+  review:`
+  <div class="rg">
+    <div class="rgbtns">
+      <button class="rb rb-big" onclick="showSpellingGrammar()"><span class="rb-icon">abc</span><span class="rb-lbl">Spelling &amp; Grammar</span></button>
+      <button class="rb rb-big" onclick="showThesaurus()"><span class="rb-icon">📖</span><span class="rb-lbl">Thesaurus</span></button>
+      <button class="rb rb-big" onclick="showWordCount()"><span class="rb-icon">=123</span><span class="rb-lbl">Word Count</span></button>
+    </div>
+    <div class="rglbl">Proofing</div>
+  </div>
+  <div class="rg">
+    <div class="rgbtns">
+      <button class="rb rb-big" onclick="toggleFb()" style="background:#e3f2fd;border-color:#90caf9;color:#1565C0"><span class="rb-icon">💬</span><span class="rb-lbl">New Comment</span></button>
+      <button class="rb rb-big" onclick="execCmd('insertHTML','<mark style=\\'background:#fff176;\\'>'+getSelection()+'</mark>')"><span class="rb-icon">🖊</span><span class="rb-lbl">Track Changes</span></button>
+    </div>
+    <div class="rglbl">Comments &amp; Tracking</div>
+  </div>`,
+
+  view:`
+  <div class="rg">
+    <div class="rgbtns">
+      ${[50,75,100,125,150,200].map(z=>`<button class="rb" onclick="setZoom(${z});document.getElementById('zSlider').value=${z}">${z}%</button>`).join('')}
+    </div>
+    <div class="rglbl">Zoom</div>
+  </div>
+  <div class="rg">
+    <div class="rgbtns">
+      <button class="rb rb-big" onclick="togRuler()"><span class="rb-icon">📐</span><span class="rb-lbl">Ruler</span></button>
+      <button class="rb rb-big" onclick="togGrid()"><span class="rb-icon">⊞</span><span class="rb-lbl">Gridlines</span></button>
+    </div>
+    <div class="rglbl">Show</div>
+  </div>`,
+};
+
+function rTab(tab,btn){
+  document.querySelectorAll('.ribbon-tab').forEach(t=>t.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  document.getElementById('rBody').innerHTML=RIBDATA[tab]||'<div style="padding:8px;font-size:12px;color:#888">Coming soon</div>';
+}
+
+// =============================================
+// EDITOR COMMANDS
+// =============================================
+function execCmd(c,v=null){const ed=document.getElementById('docEd');ed.focus();document.execCommand(c,false,v);updFmt();}
+function updFmt(){
+  const b=document.getElementById('bBold'),i=document.getElementById('bItalic'),u=document.getElementById('bUnder');
+  if(b)b.classList.toggle('on',document.queryCommandState('bold'));
+  if(i)i.classList.toggle('on',document.queryCommandState('italic'));
+  if(u)u.classList.toggle('on',document.queryCommandState('underline'));
+}
+function apSize(sz){
+  sz=Math.max(6,Math.min(96,+sz));
+  const inp=document.getElementById('rFontSz');if(inp)inp.value=sz;
+  const ed=document.getElementById('docEd');ed.focus();
+  document.execCommand('fontSize',false,'7');
+  ed.querySelectorAll('font[size="7"]').forEach(s=>{s.removeAttribute('size');s.style.fontSize=sz+'px';});
+}
+function apTheme(fg,bg){const ed=document.getElementById('docEd');ed.style.color=fg;ed.style.background=bg;}
+function insImg(){const u=prompt('Image URL (or paste any image link):','https://via.placeholder.com/400x200');if(u!==null)execCmd('insertHTML',`<img src="${u}" style="max-width:100%;margin:8px 0;display:block"/>`);}
+function setHdr(){const t=prompt('Header text:','');if(t!==null)document.getElementById('pgHdr').textContent=t;}
+function setFtr(){const t=prompt('Footer text:','Page 1');if(t!==null)document.getElementById('pgFtr').textContent=t;}
+function insPB(){execCmd('insertHTML','<hr style="border:none;border-top:2px dashed #1565C0;margin:20px 0"/><p><br/></p>');}
+function insLink(){const u=prompt('Enter URL:','https://');if(u)execCmd('createLink',u);}
+function insTB(){execCmd('insertHTML','<div style="border:1px solid #aaa;padding:12px;margin:8px 0;min-height:50px;background:#fffde7" contenteditable="true"><em>Text box — click to edit</em></div>');}
+function insSym(){const s=prompt('Type or paste symbol:','©');if(s)execCmd('insertHTML',s);}
+function insCols(n){let c='';for(let i=0;i<n;i++)c+=`<td style="width:${Math.floor(100/n)}%;padding:0 10px;vertical-align:top" contenteditable="true"><p>Column ${i+1} text here...</p></td>`;execCmd('insertHTML',`<table style="width:100%;border-collapse:collapse;margin:8px 0"><tr>${c}</tr></table>`);}
+function insTOC(){
+  const h=document.getElementById('docEd').querySelectorAll('h1,h2,h3');
+  if(!h.length){alert('Add Heading 1, 2, or 3 styles first, then insert the TOC.');return;}
+  let toc='<div style="border:1px solid #ccc;padding:16px;margin:12px 0;background:#fafafa"><p style="font-weight:700;font-size:15px;margin-bottom:10px">Table of Contents</p>';
+  h.forEach((el,i)=>{const lv=parseInt(el.tagName[1]);toc+=`<div style="padding:3px 0;padding-left:${(lv-1)*20}px;display:flex;align-items:baseline">${el.innerText}<span style="flex:1;border-bottom:1px dotted #ccc;margin:0 8px;min-width:20px"></span><span>${i+1}</span></div>`;});
+  execCmd('insertHTML',toc+'</div>');
+}
+function insFN(){
+  const num=(document.getElementById('docEd').querySelectorAll('.fnr').length||0)+1;
+  execCmd('insertHTML',`<sup class="fnr" style="color:#1565C0;cursor:pointer">[${num}]</sup>`);
+  execCmd('insertHTML',`<hr style="margin-top:50px;border:none;border-top:1px solid #ccc"/><p style="font-size:12px"><sup>${num}</sup> Footnote text here.</p>`);
+}
+function togRuler(){const r=document.getElementById('rulerH');r.style.display=r.style.display==='none'?'flex':'none';}
+function togGrid(){const ed=document.getElementById('docEd');ed.style.backgroundImage=ed.style.backgroundImage?'':'repeating-linear-gradient(transparent,transparent 27px,#d0d0d0 27px,#d0d0d0 28px)';}
+
+// =============================================
+// CITATIONS & BIBLIOGRAPHY (Full Working)
+// =============================================
+function formatCitation(src, style){
+  const a=src.author||'Unknown';const y=src.year||'n.d.';const t=src.title||'';
+  const j=src.journal||'';const v=src.volume||'';const pg=src.pages||'';
+  const pub=src.publisher||'';const city=src.city||'';const url=src.url||'';
+  style=style||citStyle;
+  if(style==='APA'){
+    if(src.type==='book') return `${a} (${y}). <em>${t}</em>. ${city}${city&&pub?': ':''}${pub}.`;
+    if(src.type==='journal') return `${a} (${y}). ${t}. <em>${j}</em>${v?`, <em>${v}</em>`:''}${pg?`, ${pg}`:''}. `;
+    if(src.type==='website') return `${a} (${y}). <em>${t}</em>. Retrieved from ${url}`;
+    return `${a} (${y}). <em>${t}</em>.`;
+  } else if(style==='MLA'){
+    if(src.type==='book') return `${a}. <em>${t}</em>. ${pub}, ${y}.`;
+    if(src.type==='journal') return `${a}. "${t}." <em>${j}</em>${v?` ${v}`:''}${pg?` (${y}): ${pg}`:'.'} `;
+    if(src.type==='website') return `${a}. "${t}." <em>Web</em>, ${y}. &lt;${url}&gt;`;
+    return `${a}. "${t}." ${y}.`;
+  } else if(style==='Chicago'){
+    if(src.type==='book') return `${a}. <em>${t}</em>. ${city}${city&&pub?': ':''}${pub}, ${y}.`;
+    if(src.type==='journal') return `${a}. "${t}." <em>${j}</em>${v?` ${v}`:''}${pg?`, ${pg}`:''}. ${y}.`;
+    if(src.type==='website') return `${a}. "${t}." ${y}. ${url}.`;
+    return `${a}. "${t}." ${y}.`;
+  } else { // Harvard
+    if(src.type==='book') return `${a}, ${y}. <em>${t}</em>. ${city}${city&&pub?': ':''}${pub}.`;
+    if(src.type==='journal') return `${a}, ${y}. '${t}', <em>${j}</em>${v?`, ${v}`:''}${pg?`, pp.${pg}`:'.'} `;
+    if(src.type==='website') return `${a}, ${y}. <em>${t}</em> [online]. Available at: ${url}`;
+    return `${a}, ${y}. <em>${t}</em>.`;
+  }
+}
+function inlineRef(src,style){
+  style=style||citStyle;const a=src.author||'Unknown';const y=src.year||'n.d.';
+  const lastN=a.split(',')[0].trim();
+  if(style==='APA'||style==='Harvard') return `(${lastN}, ${y})`;
+  if(style==='MLA') return `(${lastN} ${y})`;
+  if(style==='Chicago') return `<sup>[${sources.indexOf(src)+1}]</sup>`;
+  return `(${lastN}, ${y})`;
+}
+
+function showInsertCitation(){
+  const style=citStyle;
+  let html=`<div style="margin-bottom:10px;font-size:13px;color:#555">Select a source to insert a <b>${style}</b> in-text citation:</div>`;
+  if(!sources.length){html+='<div style="color:#888;font-size:13px">No sources yet. Use <b>Manage Sources</b> to add some.</div>';}
+  else {
+    html+=sources.map((s,i)=>`
+      <div class="src-item" onclick="doInsertCitation(${s.id})">
+        <div class="si-title">${s.title}</div>
+        <div class="si-meta">${s.author} · ${s.year} · ${s.type}</div>
+        <div class="si-preview">${inlineRef(s,style)} → inserts this inline citation</div>
+      </div>`).join('');
+  }
+  html+=`<button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="openAddSourceModal()">+ Add New Source</button>`;
+  openSP('📎 Insert Citation',html);
+}
+
+function doInsertCitation(srcId){
+  const src=sources.find(s=>s.id===srcId);if(!src)return;
+  execCmd('insertHTML',` <span style="color:#1565C0;font-size:14px">${inlineRef(src,citStyle)}</span>`);
+  closeSP();
+}
+
+function showManageSources(){
+  renderManageSourcesPanel();
+}
+function renderManageSourcesPanel(){
+  const style=citStyle;
+  let html=`<div style="margin-bottom:10px;display:flex;gap:6px;align-items:center;justify-content:space-between">
+    <span style="font-size:13px;font-weight:600;color:#555">Style: <b>${style}</b> · ${sources.length} source(s)</span>
+    <button class="btn btn-primary btn-sm" onclick="openAddSourceModal()">+ New Source</button>
+  </div>`;
+  if(!sources.length){html+='<div style="color:#888;font-size:13px;padding:20px 0;text-align:center">No sources added yet.</div>';}
+  else {
+    html+=sources.map(s=>`
+      <div class="src-item">
+        <div class="si-title">${s.title}</div>
+        <div class="si-meta">${s.author} · ${s.year} · ${s.type.charAt(0).toUpperCase()+s.type.slice(1)}</div>
+        <div class="si-preview">${formatCitation(s,style)}</div>
+        <div style="display:flex;gap:4px;margin-top:8px">
+          <button class="btn btn-primary btn-sm" onclick="doInsertCitation(${s.id})">Cite</button>
+          <button class="btn btn-sm" onclick="openEditSourceModal(${s.id})">Edit</button>
+          <button class="btn btn-red btn-sm" onclick="deleteSource(${s.id})">Delete</button>
+        </div>
+      </div>`).join('');
+  }
+  openSP('📚 Manage Sources',html);
+}
+
+function insertBibliography(){
+  const style=citStyle;
+  if(!sources.length){alert('No sources to insert. Add sources via Manage Sources first.');return;}
+  let html=`<div style="margin:16px 0;padding:12px;border-top:2px solid #1565C0">
+    <p style="font-weight:700;font-size:15px;margin-bottom:12px">References${style!=='APA'?' / Works Cited':''} <span style="font-size:11px;font-weight:400;color:#777">(${style})</span></p>`;
+  const sorted=[...sources].sort((a,b)=>(a.author||'').localeCompare(b.author||''));
+  sorted.forEach(s=>{html+=`<p style="padding-left:36px;text-indent:-36px;font-size:14px;margin-bottom:8px;line-height:1.6">${formatCitation(s,style)}</p>`;});
+  html+='</div>';
+  execCmd('insertHTML',html);
+  closeSP();
+}
+
+function showChangeCitProvider(){
+  const html=`<div style="font-size:13px;color:#555;margin-bottom:12px">Select citation style provider:</div>
+  ${['APA (7th ed.)','MLA (9th ed.)','Chicago (17th ed.)','Harvard','IEEE','Vancouver'].map(s=>{
+    const key=s.split(' ')[0];
+    return`<div class="src-item" onclick="setCitStyle('${key}')" style="${citStyle===key?'border-color:#1565C0;background:#e3f2fd':''}">
+      <div class="si-title">${s}</div>
+      <div class="si-meta">${['Author-Date','Author-Page','Notes-Bibliography','Author-Date','Numeric','Numeric'][['APA','MLA','Chicago','Harvard','IEEE','Vancouver'].indexOf(key)]||''} format</div>
+    </div>`;
+  }).join('')}`;
+  openSP('⇄ Change Citation Provider',html);
+}
+function setCitStyle(style){
+  citStyle=style;
+  const sel=document.getElementById('citStyleSel');
+  if(sel&&['APA','MLA','Chicago','Harvard'].includes(style))sel.value=style;
+  closeSP();
+  alert(`Citation style changed to ${style}`);
+}
+function refreshCitationStyle(){citStyle=document.getElementById('citStyleSel')?.value||'APA';}
+
+// Source modal fields
+const SRC_FIELDS={
+  book:[{id:'sAuthor',l:'Author(s)',p:'e.g. Smith, J. A.'},{id:'sYear',l:'Year',p:'e.g. 2023'},{id:'sTitle',l:'Title of Book',p:'Book title'},{id:'sCity',l:'City',p:'e.g. London'},{id:'sPub',l:'Publisher',p:'e.g. Pearson'}],
+  journal:[{id:'sAuthor',l:'Author(s)',p:'e.g. Jones, A. & Brown, K.'},{id:'sYear',l:'Year',p:'e.g. 2022'},{id:'sTitle',l:'Title of Article',p:'Article title'},{id:'sJournal',l:'Journal Name',p:'e.g. Nature'},{id:'sVolume',l:'Volume',p:'e.g. 10'},{id:'sIssue',l:'Issue',p:'e.g. 3'},{id:'sPages',l:'Pages',p:'e.g. 45-58'}],
+  website:[{id:'sAuthor',l:'Author / Organisation',p:'e.g. NASA'},{id:'sYear',l:'Year',p:'e.g. 2023'},{id:'sTitle',l:'Title of Page',p:'Page title'},{id:'sUrl',l:'URL',p:'https://...'}],
+  newspaper:[{id:'sAuthor',l:'Author',p:'e.g. Brown, T.'},{id:'sYear',l:'Year',p:'e.g. 2023'},{id:'sTitle',l:'Article Title',p:'Article title'},{id:'sJournal',l:'Newspaper Name',p:'e.g. The Guardian'},{id:'sPages',l:'Page(s)',p:'e.g. A1'}],
+  other:[{id:'sAuthor',l:'Author(s)',p:'Author name'},{id:'sYear',l:'Year',p:'Year'},{id:'sTitle',l:'Title',p:'Title of work'}],
+};
+const FIELD_MAP={sAuthor:'author',sYear:'year',sTitle:'title',sCity:'city',sPub:'publisher',sJournal:'journal',sVolume:'volume',sIssue:'issue',sPages:'pages',sUrl:'url'};
+
+function updateSrcFields(){
+  const type=document.getElementById('mSrcType').value;
+  const fields=SRC_FIELDS[type]||SRC_FIELDS.other;
+  document.getElementById('srcFields').innerHTML=fields.map(f=>`<div class="ff"><label>${f.l}</label><input id="${f.id}" placeholder="${f.p}"/></div>`).join('');
+}
+function openAddSourceModal(){
+  document.getElementById('mSrcTitle').textContent='Add New Source';
+  document.getElementById('mSrcId').value='';
+  document.getElementById('mSrcType').value='book';
+  updateSrcFields();
+  openM('mSource');
+}
+function openEditSourceModal(id){
+  const s=sources.find(x=>x.id===id);if(!s)return;
+  document.getElementById('mSrcTitle').textContent='Edit Source';
+  document.getElementById('mSrcId').value=id;
+  document.getElementById('mSrcType').value=s.type;
+  updateSrcFields();
+  const type=document.getElementById('mSrcType').value;
+  (SRC_FIELDS[type]||[]).forEach(f=>{const el=document.getElementById(f.id);if(el)el.value=s[FIELD_MAP[f.id]]||'';});
+  openM('mSource');
+}
+function saveSource(){
+  const id=document.getElementById('mSrcId').value;
+  const type=document.getElementById('mSrcType').value;
+  const fields=SRC_FIELDS[type]||SRC_FIELDS.other;
+  const data={type};
+  fields.forEach(f=>{const el=document.getElementById(f.id);if(el)data[FIELD_MAP[f.id]]=el.value.trim();});
+  if(!data.title||!data.author){alert('Author and Title are required.');return;}
+  if(id){Object.assign(sources.find(s=>s.id===+id),data);}
+  else{data.id=nextSrcId++;sources.push(data);}
+  closeM('mSource');
+  renderManageSourcesPanel();
+}
+function deleteSource(id){
+  if(!confirm('Delete this source?'))return;
+  sources=sources.filter(s=>s.id!==id);
+  renderManageSourcesPanel();
+}
+
+// =============================================
+// REVIEW — PROOFING (Full Working)
+// =============================================
+
+// --- SPELLING & GRAMMAR ---
+const COMMON_ERRORS={
+  'teh':'the','recieve':'receive','seperate':'separate','occured':'occurred',
+  'definately':'definitely','accomodate':'accommodate','beleive':'believe',
+  'freind':'friend','wierd':'weird','thier':'their','acheive':'achieve',
+  'adress':'address','arguement':'argument','begining':'beginning',
+  'buisness':'business','calender':'calendar','concious':'conscious',
+  'enviroment':'environment','existance':'existence','goverment':'government',
+  'grammer':'grammar','harrass':'harass','independant':'independent',
+  'knowlege':'knowledge','liason':'liaison','maintainance':'maintenance',
+  'millenium':'millennium','neccessary':'necessary','occassion':'occasion',
+  'perseverence':'perseverance','privelige':'privilege','recomend':'recommend',
+  'relevent':'relevant','succesful':'successful','tommorow':'tomorrow',
+  'truely':'truly','untill':'until','wether':'whether','writting':'writing',
+};
+const GRAMMAR_RULES=[
+  {pattern:/\b(i)\b/g,msg:"'I' should always be capitalised",fix:'I'},
+  {pattern:/\bdoesn't\s+has\b/gi,msg:"Use 'doesn't have' not 'doesn't has'",fix:'doesn\'t have'},
+  {pattern:/\bmore\s+better\b/gi,msg:"'more better' is redundant — use 'better'",fix:'better'},
+  {pattern:/\bvery\s+unique\b/gi,msg:"'unique' already means one of a kind — no need for 'very'",fix:'unique'},
+  {pattern:/\bcould\s+of\b/gi,msg:"Use 'could have' not 'could of'",fix:'could have'},
+  {pattern:/\bshould\s+of\b/gi,msg:"Use 'should have' not 'should of'",fix:'should have'},
+];
+
+function showSpellingGrammar(){
+  const ed=document.getElementById('docEd');
+  const text=ed.innerText||'';
+  const words=text.split(/\s+/);
+  const spellErrors=[];
+  words.forEach(w=>{
+    const clean=w.toLowerCase().replace(/[^a-z']/g,'');
+    if(COMMON_ERRORS[clean]) spellErrors.push({word:w,clean,fix:COMMON_ERRORS[clean]});
+  });
+  const grammarErrors=[];
+  GRAMMAR_RULES.forEach(rule=>{if(rule.pattern.test(text))grammarErrors.push(rule);});
+  let html='';
+  if(!spellErrors.length&&!grammarErrors.length){
+    html=`<div style="text-align:center;padding:30px 0">
+      <div style="font-size:32px;margin-bottom:10px">✅</div>
+      <div style="font-size:14px;font-weight:600;color:#2e7d32">No spelling or grammar errors found!</div>
+      <div style="font-size:12px;color:#888;margin-top:6px">The spelling and grammar check is complete.</div>
+    </div>`;
+  } else {
+    if(spellErrors.length){
+      html+=`<div style="font-size:12px;font-weight:700;color:#c62828;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Spelling (${spellErrors.length} issue${spellErrors.length>1?'s':''})</div>`;
+      html+=spellErrors.map(e=>`
+        <div class="spell-item">
+          <div class="spell-word">${e.word}</div>
+          <div class="spell-ctx" style="font-size:12px;color:#555">Did you mean: <b>${e.fix}</b>?</div>
+          <div class="spell-sugg">
+            <button class="sugg-btn" onclick="fixSpell('${e.clean}','${e.fix}')">✔ Change to "${e.fix}"</button>
+            <button class="sugg-btn" style="border-color:#888;color:#888" onclick="ignoreSpell(this)">Ignore</button>
+          </div>
+        </div>`).join('');
+    }
+    if(grammarErrors.length){
+      html+=`<div style="font-size:12px;font-weight:700;color:#e65100;margin:12px 0 8px;text-transform:uppercase;letter-spacing:.5px">Grammar (${grammarErrors.length} issue${grammarErrors.length>1?'s':''})</div>`;
+      html+=grammarErrors.map(e=>`
+        <div class="spell-item" style="border-color:#ffe0b2;background:#fff8f3">
+          <div class="spell-word" style="color:#e65100">Grammar issue</div>
+          <div class="spell-ctx">${e.msg}</div>
+          <div class="spell-sugg">
+            <button class="sugg-btn" style="border-color:#e65100;color:#e65100" onclick="this.closest('.spell-item').remove()">Dismiss</button>
+          </div>
+        </div>`).join('');
+    }
+  }
+  openSP('abc ✔ Spelling &amp; Grammar',html);
+}
+
+function fixSpell(wrong,right){
+  const ed=document.getElementById('docEd');
+  const regex=new RegExp('\\b'+wrong+'\\b','gi');
+  ed.innerHTML=ed.innerHTML.replace(regex,right);
+  showSpellingGrammar(); // refresh
+}
+function ignoreSpell(btn){btn.closest('.spell-item').style.opacity='0.4';}
+
+// --- THESAURUS ---
+const THESAURUS={
+  'good':{adjective:['excellent','fine','great','superb','outstanding','wonderful','splendid','admirable'],adverb:['well','nicely','properly']},
+  'bad':{adjective:['poor','terrible','awful','dreadful','inferior','deficient','inadequate'],noun:['fault','flaw','weakness']},
+  'big':{adjective:['large','enormous','huge','vast','massive','gigantic','substantial','immense'],adverb:['greatly','largely']},
+  'small':{adjective:['tiny','little','minute','compact','petite','diminutive','slight','minor']},
+  'happy':{adjective:['joyful','pleased','delighted','cheerful','content','elated','thrilled','glad']},
+  'sad':{adjective:['unhappy','sorrowful','melancholy','gloomy','depressed','miserable','downcast']},
+  'fast':{adjective:['quick','rapid','swift','speedy','hasty','brisk','fleet','agile'],adverb:['quickly','rapidly','swiftly','speedily']},
+  'slow':{adjective:['gradual','leisurely','sluggish','unhurried','plodding','tardy','languid']},
+  'important':{adjective:['significant','crucial','essential','vital','key','critical','fundamental','major']},
+  'show':{verb:['demonstrate','display','illustrate','reveal','indicate','present','exhibit','portray']},
+  'use':{verb:['employ','utilise','apply','implement','adopt','exercise','deploy']},
+  'say':{verb:['state','declare','assert','claim','argue','mention','note','suggest','indicate']},
+  'make':{verb:['create','produce','construct','build','generate','form','develop','establish']},
+  'get':{verb:['obtain','acquire','gain','receive','achieve','attain','secure','procure']},
+  'change':{verb:['alter','modify','transform','adjust','revise','amend','shift','adapt'],noun:['modification','alteration','transformation','revision','adjustment']},
+  'problem':{noun:['issue','challenge','difficulty','obstacle','complication','dilemma','concern']},
+  'increase':{verb:['grow','rise','expand','boost','enhance','elevate','intensify','amplify'],noun:['growth','rise','expansion','surge','gain']},
+  'decrease':{verb:['reduce','decline','drop','fall','shrink','diminish','lessen','lower']},
+  'think':{verb:['believe','consider','suppose','reckon','assume','conclude','reflect','ponder']},
+};
+
+function showThesaurus(){
+  let selWord='';
+  const sel=window.getSelection();
+  if(sel&&sel.rangeCount>0) selWord=sel.toString().trim().toLowerCase().replace(/[^a-z]/g,'');
+  const html=`
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <input id="thesInp" value="${selWord}" placeholder="Enter a word..." style="flex:1;padding:7px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;outline:none" onkeydown="if(event.key==='Enter')lookupThesaurus()"/>
+      <button class="btn btn-primary btn-sm" onclick="lookupThesaurus()">Look up</button>
+    </div>
+    <div id="thesResults">${selWord?getThesaurusHTML(selWord):'<div style="font-size:13px;color:#aaa;text-align:center;padding:20px 0">Type a word and click Look up</div>'}</div>`;
+  openSP('📖 Thesaurus',html);
+}
+function lookupThesaurus(){
+  const w=(document.getElementById('thesInp')?.value||'').trim().toLowerCase().replace(/[^a-z]/g,'');
+  document.getElementById('thesResults').innerHTML=getThesaurusHTML(w);
+}
+function getThesaurusHTML(word){
+  const entry=THESAURUS[word];
+  if(!entry){
+    // Try partial match
+    const matches=Object.keys(THESAURUS).filter(k=>k.startsWith(word.slice(0,4))).slice(0,5);
+    if(matches.length){return `<div style="font-size:12px;color:#888;margin-bottom:10px">No exact match for "<b>${word}</b>". Did you mean:</div>`+matches.map(m=>`<span class="thes-word" onclick="document.getElementById('thesInp').value='${m}';lookupThesaurus()">${m}</span> `).join('');}
+    return `<div style="font-size:13px;color:#888;text-align:center;padding:20px 0">No results for "<b>${word}</b>".<br><span style="font-size:12px">Try: good, bad, big, small, important, show, use, say, change, think</span></div>`;
+  }
+  let html=`<div style="font-size:14px;font-weight:700;color:#1565C0;margin-bottom:12px">${word}</div>`;
+  Object.entries(entry).forEach(([pos,words])=>{
+    html+=`<div class="thes-group"><div class="tg-pos">${pos}</div><div class="tg-words">${words.map(w=>`<span class="thes-word" onclick="insertThesaurusWord('${w}')">${w}</span>`).join('')}</div></div>`;
+  });
+  return html;
+}
+function insertThesaurusWord(word){
+  const sel=window.getSelection();
+  if(sel&&sel.rangeCount>0&&sel.toString().trim()){
+    const r=sel.getRangeAt(0);r.deleteContents();r.insertNode(document.createTextNode(word));
+  } else {
+    execCmd('insertHTML',word+' ');
+  }
+  closeSP();
+}
+
+// --- WORD COUNT PANEL ---
+function showWordCount(){
+  const ed=document.getElementById('docEd');
+  const fullText=ed.innerText||'';
+  const textNoSpaces=fullText.replace(/\s/g,'');
+  const words=fullText.trim().split(/\s+/).filter(w=>w);
+  const lines=fullText.split('\n').filter(l=>l.trim()).length;
+  const chars=fullText.length;
+  const para=ed.querySelectorAll('p,h1,h2,h3,h4,li').length;
+  const reading=Math.ceil(words.length/200);
+  const html=`
+    <div style="background:#f0f4ff;border-radius:8px;padding:14px;margin-bottom:12px;text-align:center">
+      <div style="font-size:36px;font-weight:900;color:#1565C0">${words.length}</div>
+      <div style="font-size:13px;color:#555;font-weight:600">Total Words</div>
+    </div>
+    <div style="background:white;border-radius:8px;border:1px solid #e0e0e0;overflow:hidden">
+      <div class="wc-row" style="padding:9px 14px"><span>Pages</span><span class="wc-val">1</span></div>
+      <div class="wc-row" style="padding:9px 14px"><span>Words</span><span class="wc-val">${words.length}</span></div>
+      <div class="wc-row" style="padding:9px 14px"><span>Characters (no spaces)</span><span class="wc-val">${textNoSpaces.length}</span></div>
+      <div class="wc-row" style="padding:9px 14px"><span>Characters (with spaces)</span><span class="wc-val">${chars}</span></div>
+      <div class="wc-row" style="padding:9px 14px"><span>Paragraphs</span><span class="wc-val">${para}</span></div>
+      <div class="wc-row" style="padding:9px 14px"><span>Lines</span><span class="wc-val">${lines}</span></div>
+      <div class="wc-row" style="padding:9px 14px"><span>Est. Reading Time</span><span class="wc-val">${reading} min</span></div>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:#aaa;text-align:center">Based on 200 words per minute average reading speed</div>`;
+  openSP('=123 Word Count',html);
+}
+
+// =============================================
+// TABLE MODAL
+// =============================================
+function doTable(){
+  const r=+document.getElementById('mRows').value,c=+document.getElementById('mCols').value;
+  let h='<table style="border-collapse:collapse;width:100%;margin:8px 0"><thead><tr>';
+  for(let j=0;j<c;j++)h+=`<th style="border:1px solid #ccc;padding:8px;background:#f5f5f5;font-weight:700" contenteditable="true">Header ${j+1}</th>`;
+  h+='</tr></thead><tbody>';
+  for(let i=1;i<r;i++){h+='<tr>';for(let j=0;j<c;j++)h+=`<td style="border:1px solid #ccc;padding:7px" contenteditable="true">Cell</td>`;h+='</tr>';}
+  execCmd('insertHTML',h+'</tbody></table><p><br/></p>');closeM('mTable');
+}
+
+// =============================================
+// TASK / ASSIGN MODALS
+// =============================================
+let assignTid=null;
+function openAssign(tid){
+  assignTid=tid;const t=tasks.find(x=>x.id===tid);
+  document.getElementById('mAssignTitle').textContent='Assign: '+t.title;
+  document.getElementById('sChkList').innerHTML=students.map(s=>`<label><input type="checkbox" value="${s.id}"> ${s.name} (${s.cls})</label>`).join('');
+  openM('mAssign');
+}
+function toggleIndiv(){document.getElementById('indivDiv').style.display=document.getElementById('ato').value==='individual'?'block':'none';}
+function doAssign(){
+  const to=document.getElementById('ato').value;
+  let msg=to==='individual'?[...document.querySelectorAll('#sChkList input:checked')].length+' student(s) selected':to;
+  alert('✅ Task assigned to: '+msg);closeM('mAssign');
+}
+function doCreateTask(){
+  const title=document.getElementById('ntTitle').value.trim();
+  if(!title){alert('Enter a title.');return;}
+  const newT={id:tasks.length+1,title,due:document.getElementById('ntDue').value,to:document.getElementById('ntAssign').value,criteria:document.getElementById('ntCrit').value,tpl:document.getElementById('ntTpl').value||`<h2>${title}</h2><p><strong>Instructions:</strong> Complete this task as directed.</p><p><br/></p>`};
+  tasks.push(newT);
+  // Seed task progress for all students
+  students.forEach(s=>tpSet(s.id,newT.id,{status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0}));
+  closeM('mTask');tTab('tasks',null);alert('✅ Task "'+title+'" created!');
+}
+
+// =============================================
+// FEEDBACK MODAL
+// =============================================
+let fbSid=null;
+let fbTaskId=null;
+function openFb(sid, taskId){
+  fbSid=sid;fbTaskId=taskId||tasks[0]?.id||null;
+  const st=students.find(s=>s.id===sid);
+  const tp=tpGet(sid,fbTaskId);
+  document.getElementById('mFbTitle').textContent='Feedback – '+st.name;
+  document.getElementById('mFbScore').value=tp.score||'';
+  document.getElementById('mFbText').value=tp.feedback||'';
+  selR=[...(tp.rewards||[])];
+  document.querySelectorAll('#remojis .rem').forEach(el=>el.classList.toggle('sel',selR.includes(el.dataset.r)));
+  openM('mFeedback');
+}
+function apFb(t){const el=document.getElementById('mFbText');el.value=(el.value?el.value+'\n':'')+t;}
+function togR(el){el.classList.toggle('sel');const r=el.dataset.r;selR=el.classList.contains('sel')?[...selR,r]:selR.filter(x=>x!==r);}
+function saveFb(){
+  const st=students.find(s=>s.id===fbSid);if(!st)return;
+  const sc=document.getElementById('mFbScore').value;
+  const fb=document.getElementById('mFbText').value;
+  const update={rewards:selR};
+  if(sc) update.score=+sc;
+  if(fb) update.feedback=fb;
+  tpSet(fbSid, fbTaskId, update);
+  closeM('mFeedback');
+  const title=document.getElementById('tTabTitle').textContent;
+  tTab(title.includes('Student')?'students':'overview',null);
+  alert('✅ Feedback saved for '+st.name);
+}
+
+// =============================================
+// MODAL HELPERS
+// =============================================
+function openM(id){document.getElementById(id).classList.add('open');}
+function closeM(id){document.getElementById(id).classList.remove('open');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));closeSP();}});
+
+// =============================================
+// EXPORT CSV
+// =============================================
+function dlCSV(){
+  const cols=['Student Name','Class','Task','Status','Score','Feedback','Rewards','Time (min)','Submitted'];
+  const rows=[cols,...students.flatMap(s=>tasks.map(t=>{const tp=tpGet(s.id,t.id);return[s.name,s.cls,t.title,tp.status,tp.score!=null?tp.score:'',tp.feedback||'',(tp.rewards||[]).join(' '),tp.time,tp.submitted||''];}))];
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const b=new Blob([csv],{type:'text/csv'});const u=URL.createObjectURL(b);
+  const a=document.createElement('a');a.href=u;a.download='classroom_results.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+
+// =============================================
+// UPLOAD DOCUMENT
+// =============================================
+let uploadedDocData = null; // {name, html}
+
+function handleDocUpload(input){
+  const file = input.files[0];
+  if(!file) return;
+  const name = file.name;
+  const ext = name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+
+  reader.onload = function(e){
+    let html = '';
+    if(ext==='html'||ext==='htm'){
+      // Use HTML directly — strip <html>/<head>/<body> wrapper if present
+      let raw = e.target.result;
+      const bodyMatch = raw.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      html = bodyMatch ? bodyMatch[1] : raw;
+    } else if(ext==='txt'||ext==='rtf'){
+      // Plain text — wrap paragraphs
+      const lines = e.target.result.split('\n');
+      html = lines.map(l=>{
+        const t=l.trim();
+        if(!t) return '<p><br/></p>';
+        // Detect heading-like lines (ALL CAPS or ends with :)
+        if(t===t.toUpperCase()&&t.length<80&&t.length>2) return `<h2>${t}</h2>`;
+        return `<p>${t}</p>`;
+      }).join('');
+    } else if(ext==='docx'||ext==='doc'){
+      // .docx is a zip — we can't parse it natively in browser without a library
+      // Instead we show a helpful message and use filename as title
+      html = `<h2>${name.replace(/\.[^.]+$/,'')}</h2>
+<div style="background:#fff3e0;border-left:4px solid #FF9800;padding:12px;margin:12px 0;border-radius:4px;font-size:13px">
+  <strong>Note:</strong> .docx files cannot be rendered directly in the browser. Your document title has been captured.
+  Please paste or type the document content below, or use a .txt or .html file for full import.
+</div>
+<p>Start typing or paste your document content here...</p>`;
+    }
+    uploadedDocData = {name: name.replace(/\.[^.]+$/,''), html, ext};
+    showUploadZone();
+    // reset input so same file can be re-uploaded
+    input.value='';
+  };
+
+  if(ext==='docx'||ext==='doc'){
+    // Still trigger onload with empty result for .docx
+    reader.readAsText(file);
+  } else {
+    reader.readAsText(file, 'UTF-8');
+  }
+}
+
+function showUploadZone(){
+  // Find the Create Doc nav button and re-render
+  const btn = [...document.querySelectorAll('#teacherScreen .nav-item')].find(b=>b.textContent.includes('Create'));
+  tTab('create', btn);
+  setTimeout(()=>{
+    const zone = document.getElementById('uploadZone');
+    const fname = document.getElementById('uploadFileName');
+    if(zone){ zone.style.display='block'; }
+    if(fname && uploadedDocData){ fname.textContent = '"'+uploadedDocData.name+'" — ready to save as task'; }
+  }, 50);
+}
+
+function discardUpload(){
+  uploadedDocData = null;
+  const zone = document.getElementById('uploadZone');
+  if(zone) zone.style.display='none';
+}
+
+function previewUploadedDoc(){
+  if(!uploadedDocData){ alert('No document uploaded.'); return; }
+  // Mark as upload-preview so autoSave writes back to uploadedDocData
+  currTask = {title: uploadedDocData.name, tpl: uploadedDocData.html, _isUploadPreview: true};
+  currSt = null; wMode = 'teacher';
+  document.getElementById('wTitle').textContent = uploadedDocData.name + ' – Edit Before Assigning';
+  document.getElementById('wRole').textContent = '✏️ Editing uploaded document';
+  document.getElementById('submitBtn').style.display = 'none';
+  // Show a Save & Assign button in place of submit
+  const sbr = document.querySelector('.sbr');
+  if(sbr && !document.getElementById('saveAssignBtn')){
+    const btn = document.createElement('button');
+    btn.id = 'saveAssignBtn';
+    btn.className = 'btn btn-green btn-sm';
+    btn.textContent = '✔ Save & Assign to All Students';
+    btn.onclick = saveEditedUploadAsTask;
+    sbr.insertBefore(btn, sbr.firstChild);
+  }
+  document.getElementById('docEd').innerHTML = uploadedDocData.html;
+  document.getElementById('docEd').contentEditable = 'true';
+  closeSP();
+  setupEditorEvents();
+  showSc('wordScreen');
+  rTab('home', document.querySelector('.ribbon-tab'));
+}
+
+function saveEditedUploadAsTask(){
+  // Grab the CURRENT editor content (with all edits)
+  const html = document.getElementById('docEd').innerHTML;
+  const title = (currTask && currTask.title) || (uploadedDocData && uploadedDocData.name) || 'Uploaded Document';
+  doCreateAndAssignTask(title, html);
+}
+
+function saveUploadedAsTask(){
+  // Called from the upload zone (before opening in Word)
+  // Use current uploadedDocData.html (may have been edited in preview)
+  if(!uploadedDocData){ alert('No document uploaded.'); return; }
+  const html = uploadedDocData.html;
+  const title = uploadedDocData.name || 'Uploaded Document';
+  doCreateAndAssignTask(title, html);
+}
+
+function doCreateAndAssignTask(title, html){
+  // Check if a task with this title already exists (edit case)
+  const existing = tasks.find(t => t.title === title && t.uploaded);
+  if(existing){
+    existing.tpl = html;
+  } else {
+    const uploadedT={
+      id: tasks.length + 1,
+      title: title,
+      due: '',
+      to: 'all',
+      criteria: 'Uploaded document — assigned to all students.',
+      tpl: html,
+      uploaded: true,
+    };
+  tasks.push(uploadedT);
+  // Seed task progress for all existing students
+  students.forEach(s=>tpSet(s.id,uploadedT.id,{status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0}));
+  }
+  uploadedDocData = null;
+  currTask = null;
+
+  // Remove the Save & Assign button if present
+  const sab = document.getElementById('saveAssignBtn');
+  if(sab) sab.remove();
+
+  // Go back to teacher dashboard Create Doc tab
+  showSc('teacherScreen');
+  const btn = [...document.querySelectorAll('#teacherScreen .nav-item')].find(b=>b.textContent.includes('Create'));
+  tTab('create', btn);
+
+  // Show success banner
+  setTimeout(()=>{
+    const c = document.getElementById('tContent');
+    if(!c) return;
+    const banner = document.createElement('div');
+    banner.style.cssText='background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px';
+    banner.innerHTML=`<div><strong style="color:#2e7d32;font-size:14px">✅ "${title}" saved and assigned to all students!</strong>
+      <div style="font-size:12px;color:#555;margin-top:3px">Students can see and open this document from their dashboard.</div></div>
+      <button class="btn btn-sm" style="flex-shrink:0" onclick="this.parentElement.remove()">Dismiss</button>`;
+    c.insertBefore(banner, c.firstChild);
+  }, 60);
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  updateSrcFields();
+  // In sandbox iframes, `let`-scoped functions are NOT on window.
+  // Explicitly expose every function called from innerHTML onclick attributes.
+  window.deleteTask=deleteTask;
+  window.clearAllTasks=clearAllTasks;
+  window.openWordT=openWordT;
+  window.openWordS=openWordS;
+  window.openWordBlank=openWordBlank;
+  window.openWord=openWord;
+  window.openAssign=openAssign;
+  window.openFb=openFb;
+  window.openEditStudent=openEditStudent;
+  window.openAddStudent=openAddStudent;
+  window.deleteStudent=deleteStudent;
+  window.saveStudent=saveStudent;
+  window.tTab=tTab;
+  window.showStudentTab=showStudentTab;
+  window.rTab=rTab;
+  window.execCmd=execCmd;
+  window.apSize=apSize;
+  window.apTheme=apTheme;
+  window.insImg=insImg;
+  window.setHdr=setHdr;
+  window.setFtr=setFtr;
+  window.insPB=insPB;
+  window.insLink=insLink;
+  window.insTB=insTB;
+  window.insSym=insSym;
+  window.insCols=insCols;
+  window.insTOC=insTOC;
+  window.insFN=insFN;
+  window.togRuler=togRuler;
+  window.togGrid=togGrid;
+  window.showInsertCitation=showInsertCitation;
+  window.showManageSources=showManageSources;
+  window.renderManageSourcesPanel=renderManageSourcesPanel;
+  window.insertBibliography=insertBibliography;
+  window.showChangeCitProvider=showChangeCitProvider;
+  window.setCitStyle=setCitStyle;
+  window.refreshCitationStyle=refreshCitationStyle;
+  window.openAddSourceModal=openAddSourceModal;
+  window.openEditSourceModal=openEditSourceModal;
+  window.saveSource=saveSource;
+  window.deleteSource=deleteSource;
+  window.doInsertCitation=doInsertCitation;
+  window.lookupThesaurus=lookupThesaurus;
+  window.insertThesaurusWord=insertThesaurusWord;
+  window.ignoreSpell=ignoreSpell;
+  window.fixSpell=fixSpell;
+  window.showSpellingGrammar=showSpellingGrammar;
+  window.showThesaurus=showThesaurus;
+  window.showWordCount=showWordCount;
+  window.openM=openM;
+  window.closeM=closeM;
+  window.doTable=doTable;
+  window.doAssign=doAssign;
+  window.toggleIndiv=toggleIndiv;
+  window.doCreateTask=doCreateTask;
+  window.saveFb=saveFb;
+  window.apFb=apFb;
+  window.togR=togR;
+  window.addLivFb=addLivFb;
+  window.togLivR=togLivR;
+  window.saveLivFb=saveLivFb;
+  window.toggleFb=toggleFb;
+  window.closeFb=closeFb;
+  window.addCmt=addCmt;
+  window.submitWork=submitWork;
+  window.autoSave=autoSave;
+  window.backFromWord=backFromWord;
+  window.setZoom=setZoom;
+  window.saveUploadedAsTask=saveUploadedAsTask;
+  window.previewUploadedDoc=previewUploadedDoc;
+  window.discardUpload=discardUpload;
+  window.saveEditedUploadAsTask=saveEditedUploadAsTask;
+  window.doCreateAndAssignTask=doCreateAndAssignTask;
+  window.dlCSV=dlCSV;
+  window.doLogin=doLogin;
+  window.doLogout=doLogout;
+  window.setRole=setRole;
+  window.updateSrcFields=updateSrcFields;
+  window.closeSP=closeSP;
+  window.refreshManage=refreshManage;
+});
+</script>
+</body>
+</html>
