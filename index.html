@@ -706,6 +706,16 @@ async function doLogin(){
       await fbLoadAllTasks();
       await fbLoadStudentProgress(uid);
       hideLoginLoading();
+      // Make sure this student exists in local arrays so openS can find them
+      if(!students.find(s=>String(s.id)===String(uid))){
+        const col=COLORS[students.length%COLORS.length];
+        students.push({
+          id:uid, name:profile.name,
+          cls:profile.class||'', av:profile.avatar||profile.name.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2),
+          col:profile.color||col,
+          prog:0,status:'not_started',score:null,feedback:'',rewards:[],time:0,submitted:null,doc:''
+        });
+      }
       CU = {role:'student', name:profile.name, sid:uid, fbId:uid};
       openS();
     }catch(e){
@@ -2355,12 +2365,13 @@ async function fbLoadAllStudents(){
 async function fbLoadAllTasks(){
   try{
     const snap = await fbDb.ref('tasks').once('value');
-    if(!snap.exists()) return;
-    tasks=[];
+    if(!snap.exists()) return; // Keep local tasks if RTDB has none yet
+    const rtTasks=[];
     snap.forEach(child=>{
       const d=child.val();
-      tasks.push({id:child.key,title:d.title,due:d.dueDate||'',to:d.assignedTo||'all',criteria:d.criteria||'',tpl:d.template||'',uploaded:d.uploaded||false});
+      rtTasks.push({id:child.key,title:d.title,due:d.dueDate||'',to:d.assignedTo||'all',criteria:d.criteria||'',tpl:d.template||'',uploaded:d.uploaded||false});
     });
+    if(rtTasks.length) tasks=rtTasks;
     seedTaskProgress();
   }catch(e){console.warn('fbLoadAllTasks error:',e);}
 }
