@@ -548,6 +548,44 @@ let sources = [
 
 let CU=null,CR='student',currTask=null,currSt=null,wMode='student',cmts=[],astimer=null,selR=[];
 
+// ============================================================
+// LOCALSTORAGE PERSISTENCE — saves all data across sessions
+// ============================================================
+const LS_KEY = 'wc_data';
+
+function saveToStorage(){
+  try{
+    const data = {
+      students,
+      userAccounts,
+      tasks,
+      taskProgress,
+      nextSid,
+      nextSrcId,
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem(LS_KEY, JSON.stringify(data));
+  }catch(e){ console.warn('Save error:', e); }
+}
+
+function loadFromStorage(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return false;
+    const data = JSON.parse(raw);
+    if(data.students && data.students.length){
+      students      = data.students;
+      userAccounts  = data.userAccounts  || [];
+      tasks         = data.tasks         || tasks;
+      taskProgress  = data.taskProgress  || {};
+      nextSid       = data.nextSid       || 6;
+      nextSrcId     = data.nextSrcId     || 4;
+      return true;
+    }
+    return false;
+  }catch(e){ console.warn('Load error:', e); return false; }
+}
+
 // Per-student per-task progress: taskProgress[studentId][taskId] = {status, doc, score, feedback, rewards, time, submitted, prog}
 let taskProgress = {};
 function tpGet(sid, tid){
@@ -762,7 +800,10 @@ function rManage(){
   <div class="sm-card">
     <div class="sm-hdr">
       <span class="sm-hdr-title">👥 Student Accounts (${students.length})</span>
-      <button class="btn btn-primary btn-sm" onclick="openAddStudent()">+ Add Student</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-primary btn-sm" onclick="openAddStudent()">+ Add Student</button>
+        <button class="btn btn-sm" style="font-size:11px;color:#c62828;border-color:#c62828" onclick="resetAllData()">🗑 Reset All Data</button>
+      </div>
     </div>
     ${students.map(s=>{
       const acc=userAccounts.find(a=>a.sid===s.id);
@@ -851,8 +892,10 @@ function saveStudent(){
       fbCreateStudent(name,cls,email,pass,av,col).catch(e=>console.warn('FB create student:',e));
     }
   }
+  saveToStorage();
   closeM('mStudent');
   refreshManage();
+  updateLoginHint();
 }
 async function deleteStudent(id){
   const sid=+id;
@@ -862,9 +905,9 @@ async function deleteStudent(id){
   const acc=userAccounts.find(a=>a.sid===sid);
   students=students.filter(s=>s.id!==sid);
   userAccounts=userAccounts.filter(a=>a.sid!==sid);
-  delete taskProgress[sid];
+  delete taskProgress[String(sid)];
+  saveToStorage();
   if(FB_READY&&acc){
-    // Delete Firestore profile and progress docs
     fbDb.collection('profiles').where('username','==',acc.email).get()
       .then(snap=>snap.forEach(d=>d.ref.delete())).catch(()=>{});
     const progSnap=await fbDb.collection('progress').where('studentId','==',String(sid)).get().catch(()=>null);
@@ -873,10 +916,20 @@ async function deleteStudent(id){
   refreshManage();
 }
 function updateLoginHint(){
-  if(document.getElementById("loginHint")){
-    const h=userAccounts.slice(0,3).map(a=>`<b>${a.email}</b>/${a.password}`).join(", ")+(userAccounts.length>3?"...":"");
-    if(CR!=="teacher") document.getElementById("loginHint").innerHTML="Students: "+h;
+  const el=document.getElementById("loginHint");
+  if(!el) return;
+  if(CR==="teacher"){
+    el.innerHTML='Password: <b>teacher123</b>';
+  } else {
+    el.innerHTML='';
   }
+}
+
+function resetAllData(){
+  if(!confirm('Reset ALL classroom data?\nThis deletes all students, tasks and progress permanently.'))return;
+  if(!confirm('Are you absolutely sure? This cannot be undone.'))return;
+  localStorage.removeItem(LS_KEY);
+  location.reload();
 }
 
 function rTasks(){
@@ -934,7 +987,8 @@ function deleteTask(tid){
   if(!t){alert('Task not found.');return;}
   if(!confirm('Delete "'+t.title+'"?\nThis will remove the task and all student progress for it.'))return;
   tasks=tasks.filter(x=>x.id!==tid);
-  students.forEach(s=>{ if(taskProgress[s.id]) delete taskProgress[s.id][tid]; });
+  students.forEach(s=>{ if(taskProgress[String(s.id)]) delete taskProgress[String(s.id)][String(tid)]; });
+  saveToStorage();
   if(FB_READY){
     fbDb.collection('tasks').doc(String(tid)).delete().catch(()=>{});
     fbDb.collection('progress').where('taskId','==',tid).get()
@@ -954,8 +1008,8 @@ function clearAllTasks(){
   // Second confirmation for safety
   if(!confirm('Are you absolutely sure? All student work will be lost.'))return;
   tasks=[];
-  // Wipe all task progress
-  students.forEach(s=>{ taskProgress[s.id]={}; });
+  students.forEach(s=>{ taskProgress[String(s.id)]= {}; });
+  saveToStorage();
   // Re-render tasks tab
   const btn=[...document.querySelectorAll('#teacherScreen .nav-item')].find(b=>b.textContent.includes('Task'));
   document.querySelectorAll('#teacherScreen .nav-item').forEach(n=>n.classList.remove('active'));
@@ -1295,7 +1349,8 @@ function saveLivFb(){
   if(sc) update.score=+sc;
   if(fb) update.feedback=fb;
   if(rwds.length) update.rewards=rwds;
-  tpSet(currSt.id, currTask.id, update);
+  tpSet(String(currSt.id), String(currTask.id), update);
+  saveToStorage();
   showSaveIndicator();
   alert('✅ Feedback saved for '+currSt.name);
 }
@@ -1312,8 +1367,9 @@ async function autoSave(){
   if(CU?.role==="student"&&currTask){
     const tp=tpGet(String(CU.sid),String(currTask.id));
     const newProg=Math.min((tp.prog||0)+3,95);
-    tpSet(CU.sid,currTask.id,{doc:html,status:tp.status==='not_started'?'in_progress':tp.status,prog:newProg,time:(tp.time||0)+1});
+    tpSet(String(CU.sid),String(currTask.id),{doc:html,status:tp.status==='not_started'?'in_progress':tp.status,prog:newProg,time:(tp.time||0)+1});
     showSaveIndicator();
+    saveToStorage();
     if(FB_READY&&CU.fbId){
       try{
         await fbDb.collection('progress').doc(CU.fbId+'_'+currTask.id).set({
@@ -1327,7 +1383,7 @@ async function autoSave(){
   } else if(CU?.role==="teacher"&&currTask){
     const t=tasks.find(x=>x.id===currTask.id);
     if(t){
-      t.tpl=html;showSaveIndicator();
+      t.tpl=html;showSaveIndicator();saveToStorage();
       if(FB_READY) fbDb.collection('tasks').doc(String(t.id)).update({template:html}).catch(()=>{});
     }
     else if(currTask._isUploadPreview){currTask.tpl=html;if(uploadedDocData)uploadedDocData.html=html;showSaveIndicator();}
@@ -1346,6 +1402,7 @@ async function submitWork(){
   const html=document.getElementById('docEd').innerHTML;
   const today=new Date().toISOString().split('T')[0];
   tpSet(String(CU.sid),String(currTask.id),{doc:html,status:'submitted',prog:100,submitted:today});
+  saveToStorage();
   if(FB_READY&&CU.fbId){
     try{
       await fbDb.collection('progress').doc(CU.fbId+'_'+currTask.id).set({
@@ -2011,6 +2068,7 @@ function doCreateTask(){
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
     }).catch(e=>console.warn('Task save error:',e));
   }
+  saveToStorage();
   closeM('mTask');tTab('tasks',null);alert('✅ Task "'+title+'" created!');
 }
 
@@ -2039,7 +2097,8 @@ function saveFb(){
   const update={rewards:selR};
   if(sc) update.score=+sc;
   if(fb) update.feedback=fb;
-  tpSet(fbSid, fbTaskId, update);
+  tpSet(String(fbSid), String(fbTaskId), update);
+  saveToStorage();
   closeM('mFeedback');
   const title=document.getElementById('tTabTitle').textContent;
   tTab(title.includes('Student')?'students':'overview',null);
@@ -2193,8 +2252,8 @@ function doCreateAndAssignTask(title, html){
       uploaded: true,
     };
   tasks.push(uploadedT);
-  // Seed task progress for all existing students
-  students.forEach(s=>tpSet(s.id,uploadedT.id,{status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0}));
+  students.forEach(s=>tpSet(String(s.id),String(uploadedT.id),{status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0}));
+  saveToStorage();
   }
   uploadedDocData = null;
   currTask = null;
@@ -2326,7 +2385,13 @@ async function fbSaveFeedback(studentFbId,taskId,score,feedback,rewards){
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
+  // Load persisted data first — restores students, tasks, progress across sessions
+  const loaded = loadFromStorage();
+  if(loaded){
+    console.log('✅ Data restored from storage: '+students.length+' students, '+tasks.length+' tasks');
+  }
   updateSrcFields();
+  updateLoginHint();
   // In sandbox iframes, `let`-scoped functions are NOT on window.
   // Explicitly expose every function called from innerHTML onclick attributes.
   window.deleteTask=deleteTask;
