@@ -225,7 +225,6 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f0f0;overflow:hidden;height
      (from Firebase Console → Project Settings → Your Apps → Config)
      ====================================================== -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
 // ▼▼▼ PASTE YOUR FIREBASE CONFIG HERE ▼▼▼
@@ -241,22 +240,21 @@ const firebaseConfig = {
 
 // Check if config has been filled in
 let FB_READY = false;
-let fbAuth = null, fbDb = null;
+let fbDb = null;
 try{
   const configFilled = !firebaseConfig.apiKey.includes('PASTE') &&
                        firebaseConfig.apiKey.length > 10 &&
                        firebaseConfig.projectId.length > 3;
   if(configFilled){
     firebase.initializeApp(firebaseConfig);
-    fbAuth = firebase.auth();
-    fbDb   = firebase.firestore();
+    fbDb = firebase.firestore();
     FB_READY = true;
-    console.log('✅ Firebase connected');
+    console.log('✅ Firebase Firestore connected');
   } else {
-    console.warn('⚠️ Firebase not configured — running in local demo mode');
+    console.warn('⚠️ Firebase not configured — running in local mode (data saves to this device only)');
   }
 }catch(e){
-  console.warn('⚠️ Firebase init error — running in local demo mode:', e.message);
+  console.warn('⚠️ Firebase init error — local mode:', e.message);
   FB_READY = false;
 }
 </script>
@@ -689,14 +687,18 @@ async function doLogin(){
   }
 
   if(FB_READY){
+    // Firestore lookup — no Firebase Auth needed for students
     showLoginLoading('Signing in...');
     try{
-      const email = username + '@wordclassroom.app';
-      const cred = await fbAuth.signInWithEmailAndPassword(email, p);
-      const uid = cred.user.uid;
-      const snap = await fbDb.collection('profiles').doc(uid).get();
-      if(!snap.exists) throw new Error('Profile not found');
-      const profile = snap.data();
+      const snap = await fbDb.collection('profiles')
+        .where('username','==',username)
+        .where('password','==',p)
+        .where('role','==','student')
+        .limit(1).get();
+      if(snap.empty){ throw new Error('Invalid credentials'); }
+      const doc  = snap.docs[0];
+      const uid  = doc.id;
+      const profile = doc.data();
       await fbLoadAllTasks();
       await fbLoadStudentProgress(uid);
       hideLoginLoading();
@@ -709,8 +711,8 @@ async function doLogin(){
       console.warn('Student login error:', e.message);
     }
   } else {
-    // Local demo mode
-    const acc = userAccounts.find(a => a.email === username && a.password === p);
+    // Local / offline mode — uses localStorage data
+    const acc = userAccounts.find(a => String(a.email) === String(username) && String(a.password) === String(p));
     if(!acc){
       errEl.style.display = 'block';
       errEl.textContent = 'Invalid username or password.';
@@ -722,7 +724,7 @@ async function doLogin(){
       errEl.textContent = 'Student profile not found.';
       return;
     }
-    CU = {role:'student', name:st.name, sid:st.id, fbId:null};
+    CU = {role:'student', name:st.name, sid:String(st.id), fbId:null};
     openS();
   }
 }
@@ -734,9 +736,8 @@ function hideLoginLoading(){
   const btn=document.querySelector('.login-btn');
   if(btn){btn.disabled=false;btn.textContent='Sign In';}
 }
-async function doLogout(){
+function doLogout(){
   CU=null;
-  if(FB_READY && fbAuth.currentUser) await fbAuth.signOut();
   // Clear all fields
   document.getElementById('lp').value='';
   document.getElementById('lu').value='';
@@ -863,7 +864,7 @@ function refreshManage(){
   document.getElementById('tContent').innerHTML=rManage();
   updateLoginHint();
 }
-function saveStudent(){
+async function saveStudent(){
   const id=document.getElementById('mStId').value;
   const name=document.getElementById('mStName').value.trim();
   const cls=document.getElementById('mStClass').value.trim();
@@ -873,33 +874,51 @@ function saveStudent(){
   if(!cls){alert('Please enter the class / group.');return;}
   if(!email){alert('Please enter a username.');return;}
   if(!pass){alert('Please enter a password.');return;}
-  // Check username not already taken by another account
-  const dupAcc=userAccounts.find(a=>a.email===email&&(!id||a.sid!==+id));
+
+  // Check username not already taken
+  const dupAcc=userAccounts.find(a=>a.email===email&&(!id||String(a.sid)!==String(id)));
   if(dupAcc){alert('Username "'+email+'" is already taken. Please choose a different username.');return;}
+
   if(id){
     // ── EDIT existing student ──
-    const sid=+id;
-    const st=students.find(s=>s.id===sid);
+    const sid=String(id);
+    const st=students.find(s=>String(s.id)===sid);
     if(st){
-      const oldName=st.name;
       st.name=name;
       st.cls=cls;
       st.av=name.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2);
     }
-    const acc=userAccounts.find(a=>a.sid===sid);
+    const acc=userAccounts.find(a=>String(a.sid)===sid);
     if(acc){acc.email=email;acc.password=pass;}
+    // Update in Firestore if available
+    if(FB_READY){
+      fbDb.collection('profiles').doc(sid).update({
+        name,class:cls,username:email,password:pass,
+        avatar:st?.av||''
+      }).catch(e=>console.warn('Firestore update error:',e));
+    }
   } else {
-    // ── ADD new student ──
-    const newId=nextSid++;
-    const col=COLORS[newId%COLORS.length];
+    // ── ADD new student — ALWAYS save locally first ──
+    const newId = String(nextSid++);
+    const col=COLORS[parseInt(newId)%COLORS.length];
     const av=name.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2);
     const newSt={id:newId,name,cls,av,col,prog:0,status:'not_started',score:null,feedback:'',rewards:[],time:0,submitted:null,doc:''};
     students.push(newSt);
     userAccounts.push({sid:newId,email,password:pass});
-    tasks.forEach(t=>tpSet(newId,t.id,{status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0}));
+    tasks.forEach(t=>tpSet(newId,String(t.id),{status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0}));
+    // Save locally immediately so student can login right now
+    saveToStorage();
+    // Also try to save to Firestore in background (for cross-device access)
     if(FB_READY){
-      // Create Firebase Auth + Firestore profile
-      fbCreateStudent(name,cls,email,pass,av,col).catch(e=>console.warn('FB create student:',e));
+      fbDb.collection('profiles').doc(newId).set({
+        name,class:cls,username:email,password:pass,
+        avatar:av,color:col,role:'student',
+        createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      }).then(()=>{
+        console.log('✅ Student also saved to Firestore:',email);
+      }).catch(e=>{
+        console.warn('⚠️ Firestore save failed (student still works locally):',e.message);
+      });
     }
   }
   saveToStorage();
@@ -1382,8 +1401,8 @@ async function autoSave(){
     saveToStorage();
     if(FB_READY&&CU.fbId){
       try{
-        await fbDb.collection('progress').doc(CU.fbId+'_'+currTask.id).set({
-          studentId:CU.fbId, taskId:currTask.id,
+        await fbDb.collection('progress').doc(String(CU.fbId)+'_'+String(currTask.id)).set({
+          studentId:String(CU.fbId), taskId:String(currTask.id),
           doc:html, status:tp.status==='not_started'?'in_progress':tp.status,
           progress:newProg, timeSpent:(tp.time||0)+1,
           updatedAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -1415,8 +1434,8 @@ async function submitWork(){
   saveToStorage();
   if(FB_READY&&CU.fbId){
     try{
-      await fbDb.collection('progress').doc(CU.fbId+'_'+currTask.id).set({
-        studentId:CU.fbId, taskId:currTask.id,
+      await fbDb.collection('progress').doc(String(CU.fbId)+'_'+String(currTask.id)).set({
+        studentId:String(CU.fbId), taskId:String(currTask.id),
         doc:html, status:'submitted', progress:100,
         submittedAt:today,
         updatedAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -2297,21 +2316,27 @@ function doCreateAndAssignTask(title, html){
 async function fbLoadAllStudents(){
   try{
     const snap=await fbDb.collection('profiles').where('role','==','student').get();
-    students=[];userAccounts=[];
+    // Merge with existing local students — don't wipe local-only ones
+    const fsStudents=[];
+    const fsAccounts=[];
     snap.forEach(doc=>{
       const d=doc.data();
       const sid=doc.id;
-      students.push({id:sid,name:d.name,cls:d.class||'',av:d.avatar||'S',col:d.color||'#1565C0',prog:0,status:'not_started',score:null,feedback:'',rewards:[],time:0,submitted:null,doc:''});
-      userAccounts.push({sid,email:d.username||'',password:d.password||''});
+      fsStudents.push({id:sid,name:d.name,cls:d.class||'',av:d.avatar||'S',col:d.color||'#1565C0',prog:0,status:'not_started',score:null,feedback:'',rewards:[],time:0,submitted:null,doc:''});
+      fsAccounts.push({sid,email:d.username||'',password:d.password||''});
     });
+    if(fsStudents.length){
+      students=fsStudents;
+      userAccounts=fsAccounts;
+    }
     // Seed task progress for all students
     seedTaskProgress();
-    // Load all progress
+    // Load all progress docs
     const progSnap=await fbDb.collection('progress').get();
     progSnap.forEach(doc=>{
       const d=doc.data();
       if(d.studentId&&d.taskId){
-        tpSet(d.studentId,d.taskId,{
+        tpSet(String(d.studentId),String(d.taskId),{
           doc:d.doc||'',status:d.status||'not_started',
           score:d.score??null,feedback:d.feedback||'',
           rewards:d.rewards||[],time:d.timeSpent||0,
@@ -2319,6 +2344,7 @@ async function fbLoadAllStudents(){
         });
       }
     });
+    saveToStorage();
   }catch(e){console.warn('fbLoadAllStudents error:',e);}
 }
 
@@ -2356,27 +2382,30 @@ async function fbLoadStudentProgress(uid){
 // The teacher must be signed in after this call
 async function fbCreateStudent(name,cls,username,password,av,col){
   try{
-    const email=username+'@wordclassroom.app';
-    // Save current teacher session info
-    const teacherToken=await fbAuth.currentUser?.getIdToken();
-    // Create the student auth account
-    const cred=await fbAuth.createUserWithEmailAndPassword(email,password);
-    const uid=cred.user.uid;
-    await fbDb.collection('profiles').doc(uid).set({
+    // Check username not already taken in Firestore
+    const existing=await fbDb.collection('profiles')
+      .where('username','==',username).limit(1).get();
+    if(!existing.empty){
+      alert('Username "'+username+'" is already taken. Please choose another.');
+      return;
+    }
+    // Create Firestore profile — no Firebase Auth, just a Firestore document
+    const ref=fbDb.collection('profiles').doc();
+    const uid=ref.id;
+    await ref.set({
       name,class:cls,username,password,
       avatar:av,color:col,role:'student',
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    // Sign back out (student) — teacher needs to re-login
-    await fbAuth.signOut();
-    alert('✅ Student "'+name+'" created in Firebase!\n\nIMPORTANT: You have been signed out.\nPlease log back in as teacher.');
-    setRole('teacher');
-    showSc('loginScreen');
+    // Add to local arrays with the real Firestore UID
+    students.push({id:uid,name,cls,av,col,prog:0,status:'not_started',score:null,feedback:'',rewards:[],time:0,submitted:null,doc:''});
+    userAccounts.push({sid:uid,email:username,password});
+    tasks.forEach(t=>tpSet(String(uid),String(t.id),{status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0}));
+    saveToStorage();
+    console.log('✅ Student created in Firestore:',username,uid);
   }catch(e){
     console.warn('fbCreateStudent error:',e);
-    if(e.code==='auth/email-already-in-use'){
-      alert('A student with username "'+username+'" already exists in Firebase.');
-    }
+    alert('Error creating student: '+e.message);
   }
 }
 
