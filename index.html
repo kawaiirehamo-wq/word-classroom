@@ -717,7 +717,7 @@ async function doLogin(){
         });
       }
       CU = {role:'student', name:profile.name, sid:uid, fbId:uid};
-      openS();
+      await openS();
     }catch(e){
       hideLoginLoading();
       errEl.style.display = 'block';
@@ -739,7 +739,7 @@ async function doLogin(){
       return;
     }
     CU = {role:'student', name:st.name, sid:String(st.id), fbId:null};
-    openS();
+    await openS();
   }
 }
 function showLoginLoading(msg){
@@ -1192,13 +1192,18 @@ function rStudent(){
 // =============================================
 // WORD SIMULATOR — OPEN
 // =============================================
-function showStudentTab(tab, btn){
+async function showStudentTab(tab, btn){
   // Update sidebar active state
   document.querySelectorAll('#sStudentNav .nav-item').forEach(n=>n.classList.remove('active'));
   if(btn) btn.classList.add('active');
   // Update header
   const titles={tasks:'My Tasks',rewards:'My Rewards',feedback:'My Feedback'};
   document.getElementById('sWelcome').textContent=titles[tab]||'';
+  // Always reload latest data from Firebase before rendering
+  if(FB_READY && CU?.fbId){
+    try{ await fbLoadStudentProgress(CU.fbId); }
+    catch(e){ console.warn('Tab reload error:',e); }
+  }
   // Render content
   if(tab==='tasks') rStudent();
   else if(tab==='rewards') renderStudentRewards();
@@ -1439,13 +1444,13 @@ async function saveLivFb(){
   showSaveIndicator();
   alert('✅ Feedback saved for '+currSt.name);
 }
-function backFromWord(){
+async function backFromWord(){
   autoSave();
   const sab=document.getElementById("saveAssignBtn");if(sab)sab.remove();
   document.getElementById("fbPanel").classList.remove("open");
   closeSP();
   if(CU.role==="teacher"){showSc("teacherScreen");tTab("create",[...document.querySelectorAll("#teacherScreen .nav-item")].find(b=>b.textContent.includes("Create")));}
-  else{openS();}
+  else{await openS();}
 }
 async function autoSave(){
   const html=document.getElementById("docEd").innerHTML;
@@ -1515,7 +1520,7 @@ async function submitWork(){
   const sab=document.getElementById('saveAssignBtn');if(sab)sab.remove();
   document.getElementById('fbPanel').classList.remove('open');
   closeSP();
-  openS();
+  await openS();
   // Show a success banner
   setTimeout(()=>{
     const c=document.getElementById('sContent');
