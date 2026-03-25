@@ -230,25 +230,34 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f0f0;overflow:hidden;height
 <script>
 // ▼▼▼ PASTE YOUR FIREBASE CONFIG HERE ▼▼▼
 const firebaseConfig = {
-  apiKey:            "AIzaSyBMcVWb_lf5AQsTy0hQXqGGAewzereQuoU",
-  authDomain:        "word-classroom.firebaseapp.com",
-  projectId:         "word-classroom",
-  storageBucket:     "word-classroom.firebasestorage.app",
-  messagingSenderId: "234162036137",
-  appId:             "1:234162036137:web:efba9bc9e7de31b3a2b8b8"
+  apiKey:            "PASTE_YOUR_apiKey_HERE",
+  authDomain:        "PASTE_YOUR_authDomain_HERE",
+  projectId:         "PASTE_YOUR_projectId_HERE",
+  storageBucket:     "PASTE_YOUR_storageBucket_HERE",
+  messagingSenderId: "PASTE_YOUR_messagingSenderId_HERE",
+  appId:             "PASTE_YOUR_appId_HERE"
 };
 // ▲▲▲ END OF CONFIG ▲▲▲
 
 // Check if config has been filled in
-const FB_READY = !firebaseConfig.apiKey.includes('PASTE');
+let FB_READY = false;
 let fbAuth = null, fbDb = null;
-if(FB_READY){
-  firebase.initializeApp(firebaseConfig);
-  fbAuth = firebase.auth();
-  fbDb   = firebase.firestore();
-  console.log('✅ Firebase connected');
-} else {
-  console.warn('⚠️ Firebase not configured — running in local demo mode');
+try{
+  const configFilled = !firebaseConfig.apiKey.includes('PASTE') &&
+                       firebaseConfig.apiKey.length > 10 &&
+                       firebaseConfig.projectId.length > 3;
+  if(configFilled){
+    firebase.initializeApp(firebaseConfig);
+    fbAuth = firebase.auth();
+    fbDb   = firebase.firestore();
+    FB_READY = true;
+    console.log('✅ Firebase connected');
+  } else {
+    console.warn('⚠️ Firebase not configured — running in local demo mode');
+  }
+}catch(e){
+  console.warn('⚠️ Firebase init error — running in local demo mode:', e.message);
+  FB_READY = false;
 }
 </script>
 </head>
@@ -542,13 +551,15 @@ let CU=null,CR='student',currTask=null,currSt=null,wMode='student',cmts=[],astim
 // Per-student per-task progress: taskProgress[studentId][taskId] = {status, doc, score, feedback, rewards, time, submitted, prog}
 let taskProgress = {};
 function tpGet(sid, tid){
-  if(!taskProgress[sid]) taskProgress[sid]={};
-  if(!taskProgress[sid][tid]) taskProgress[sid][tid]={status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0};
-  return taskProgress[sid][tid];
+  const s=String(sid), t=String(tid);
+  if(!taskProgress[s]) taskProgress[s]={};
+  if(!taskProgress[s][t]) taskProgress[s][t]={status:'not_started',doc:'',score:null,feedback:'',rewards:[],time:0,submitted:null,prog:0};
+  return taskProgress[s][t];
 }
 function tpSet(sid, tid, data){
-  if(!taskProgress[sid]) taskProgress[sid]={};
-  taskProgress[sid][tid]=Object.assign(tpGet(sid,tid), data);
+  const s=String(sid), t=String(tid);
+  if(!taskProgress[s]) taskProgress[s]={};
+  taskProgress[s][t]=Object.assign(tpGet(s,t), data);
 }
 // Seed from existing student data (for the first task)
 function seedTaskProgress(){
@@ -592,59 +603,76 @@ function setRole(r){
   document.getElementById('loginErr').style.display='none';
 }
 async function doLogin(){
-  const p=document.getElementById('lp').value.trim();
-  const errEl=document.getElementById('loginErr');
-  errEl.style.display='none';
+  const p = document.getElementById('lp').value.trim();
+  const errEl = document.getElementById('loginErr');
+  errEl.style.display = 'none';
 
-  // ── TEACHER LOGIN ──
-  if(CR==='teacher'){
-    if(p==='teacher123'){
-      CU={role:'teacher',name:'Ms. Johnson'};
+  // ── TEACHER LOGIN (password only) ──
+  if(CR === 'teacher'){
+    if(p === 'teacher123'){
+      CU = {role:'teacher', name:'Ms. Johnson'};
       if(FB_READY){
-        showLoginLoading('Loading students and tasks...');
-        await fbLoadAllStudents();
-        await fbLoadAllTasks();
+        showLoginLoading('Loading classroom data...');
+        try{
+          await fbLoadAllStudents();
+          await fbLoadAllTasks();
+        }catch(e){ console.warn('Firebase load error:', e); }
         hideLoginLoading();
       }
       openT();
     } else {
-      errEl.style.display='block';
-      errEl.textContent='Incorrect password. Please try again.';
+      errEl.style.display = 'block';
+      errEl.textContent = 'Incorrect teacher password.';
     }
     return;
   }
 
   // ── STUDENT LOGIN ──
-  const username=document.getElementById('lu').value.trim().toLowerCase();
-  if(!username||!p){errEl.style.display='block';errEl.textContent='Please enter username and password.';return;}
+  const username = document.getElementById('lu').value.trim().toLowerCase();
+  if(!username || !p){
+    errEl.style.display = 'block';
+    errEl.textContent = 'Please enter both username and password.';
+    return;
+  }
 
   if(FB_READY){
-    // Firebase auth login
+    // ── Firebase mode ──
     showLoginLoading('Signing in...');
     try{
-      const email=username+'@wordclassroom.app';
-      const cred=await fbAuth.signInWithEmailAndPassword(email,p);
-      const uid=cred.user.uid;
-      const snap=await fbDb.collection('profiles').doc(uid).get();
-      if(!snap.exists){throw new Error('Profile not found');}
-      const profile=snap.data();
+      const email = username + '@wordclassroom.app';
+      const cred = await fbAuth.signInWithEmailAndPassword(email, p);
+      const uid = cred.user.uid;
+      const snap = await fbDb.collection('profiles').doc(uid).get();
+      if(!snap.exists) throw new Error('Profile not found');
+      const profile = snap.data();
+      // Load tasks first, then progress
       await fbLoadAllTasks();
       await fbLoadStudentProgress(uid);
       hideLoginLoading();
-      CU={role:'student',name:profile.name,sid:uid,fbId:uid};
+      CU = {role:'student', name:profile.name, sid:uid, fbId:uid};
       openS();
     }catch(e){
       hideLoginLoading();
-      errEl.style.display='block';
-      errEl.textContent='Invalid username or password.';
+      errEl.style.display = 'block';
+      errEl.textContent = 'Invalid username or password.';
+      console.warn('Student login error:', e.message);
     }
+
   } else {
-    // Local demo mode fallback
-    const acc=userAccounts.find(a=>a.email===username&&a.password===p);
-    if(!acc){errEl.style.display='block';errEl.textContent='Invalid username or password.';return;}
-    const st=students.find(s=>s.id===acc.sid);
-    if(!st){errEl.style.display='block';errEl.textContent='Student account not found.';return;}
-    CU={role:'student',name:st.name,sid:st.id};
+    // ── Local demo mode ──
+    const acc = userAccounts.find(a => a.email === username && a.password === p);
+    if(!acc){
+      errEl.style.display = 'block';
+      errEl.textContent = 'Invalid username or password.';
+      return;
+    }
+    const st = students.find(s => String(s.id) === String(acc.sid));
+    if(!st){
+      errEl.style.display = 'block';
+      errEl.textContent = 'Student profile not found.';
+      return;
+    }
+    CU = {role:'student', name:st.name, sid:st.id, fbId:null};
     openS();
   }
 }
@@ -1005,18 +1033,27 @@ function rExport(){
 // =============================================
 // STUDENT DASHBOARD
 // =============================================
-function openS(){seedTaskProgress();
-  const st=students.find(s=>s.id===CU.sid);if(!st)return;
-  document.getElementById('ssAv').textContent=st.av;
-  document.getElementById('ssNm').textContent=st.name;
-  document.getElementById('ssCl').textContent=st.cls;
-  document.getElementById('ssPf').style.width=st.prog+'%';
-  document.getElementById('ssPl').textContent=st.prog+'% complete';
-  document.getElementById('sWelcome').textContent='Welcome, '+st.name.split(' ')[0]+'!';
-  rStudent();showSc('studentScreen');
+function openS(){
+  seedTaskProgress();
+  // Use String comparison so numeric IDs and Firebase string UIDs both match
+  const st = students.find(s => String(s.id) === String(CU.sid));
+  if(!st){ console.warn('openS: student not found for sid', CU.sid); return; }
+  // Calculate real progress from taskProgress
+  const myTps = tasks.map(t => tpGet(st.id, t.id));
+  const totalProg = myTps.length
+    ? Math.round(myTps.reduce((a,p) => a + (p.prog||0), 0) / myTps.length)
+    : 0;
+  document.getElementById('ssAv').textContent = st.av;
+  document.getElementById('ssNm').textContent = st.name;
+  document.getElementById('ssCl').textContent = st.cls;
+  document.getElementById('ssPf').style.width = totalProg + '%';
+  document.getElementById('ssPl').textContent = totalProg + '% complete';
+  document.getElementById('sWelcome').textContent = 'Welcome, ' + st.name.split(' ')[0] + '!';
+  rStudent();
+  showSc('studentScreen');
 }
 function rStudent(){
-  const st=students.find(s=>s.id===CU.sid);if(!st)return;
+  const st=students.find(s=>String(s.id)===String(CU.sid));if(!st)return;
   const myTps=tasks.map(t=>tpGet(st.id,t.id));
   const sub=myTps.filter(p=>p.status==='submitted').length;
   const avgSc=myTps.filter(p=>p.score!==null);
@@ -1068,7 +1105,7 @@ function showStudentTab(tab, btn){
 }
 
 function renderStudentRewards(){
-  const st=students.find(s=>s.id===CU.sid); if(!st) return;
+  const st=students.find(s=>String(s.id)===String(CU.sid)); if(!st) return;
   // Collect all rewards across all tasks
   const allRewards=[];
   tasks.forEach(t=>{
@@ -1103,7 +1140,7 @@ function renderStudentRewards(){
 }
 
 function renderStudentFeedback(){
-  const st=students.find(s=>s.id===CU.sid); if(!st) return;
+  const st=students.find(s=>String(s.id)===String(CU.sid)); if(!st) return;
   // Collect all feedback across all tasks
   const allFb=tasks.map(t=>{
     const tp=tpGet(st.id,t.id);
@@ -1139,7 +1176,7 @@ function renderStudentFeedback(){
 }
 
 function openWordS(taskId){
-  const t=tasks.find(x=>x.id===taskId);const st=students.find(s=>s.id===CU.sid);
+  const t=tasks.find(x=>String(x.id)===String(taskId));const st=students.find(s=>String(s.id)===String(CU.sid));
   if(!t||!st)return;
   const tp=tpGet(st.id,t.id);
   currTask=t;currSt=st;wMode='student';
@@ -1273,7 +1310,7 @@ function backFromWord(){
 async function autoSave(){
   const html=document.getElementById("docEd").innerHTML;
   if(CU?.role==="student"&&currTask){
-    const tp=tpGet(CU.sid,currTask.id);
+    const tp=tpGet(String(CU.sid),String(currTask.id));
     const newProg=Math.min((tp.prog||0)+3,95);
     tpSet(CU.sid,currTask.id,{doc:html,status:tp.status==='not_started'?'in_progress':tp.status,prog:newProg,time:(tp.time||0)+1});
     showSaveIndicator();
@@ -1308,7 +1345,7 @@ async function submitWork(){
   if(!currTask)return;
   const html=document.getElementById('docEd').innerHTML;
   const today=new Date().toISOString().split('T')[0];
-  tpSet(CU.sid,currTask.id,{doc:html,status:'submitted',prog:100,submitted:today});
+  tpSet(String(CU.sid),String(currTask.id),{doc:html,status:'submitted',prog:100,submitted:today});
   if(FB_READY&&CU.fbId){
     try{
       await fbDb.collection('progress').doc(CU.fbId+'_'+currTask.id).set({
