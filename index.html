@@ -577,13 +577,14 @@ const LS_KEY = 'wc_data';
 function saveToStorage(){
   try{
     const data = {
-      students,
-      userAccounts,
-      tasks,
-      taskProgress,
-      nextSid,
-      nextSrcId,
-      savedAt: new Date().toISOString()
+      students: students,
+      userAccounts: userAccounts,
+      tasks: tasks,
+      taskProgress: taskProgress,
+      nextSid: nextSid,
+      nextSrcId: nextSrcId,
+      savedAt: new Date().toISOString(),
+      version: 2
     };
     localStorage.setItem(LS_KEY, JSON.stringify(data));
   }catch(e){ console.warn('Save error:', e); }
@@ -594,13 +595,14 @@ function loadFromStorage(){
     const raw = localStorage.getItem(LS_KEY);
     if(!raw) return false;
     const data = JSON.parse(raw);
-    if(data.students && data.students.length){
-      students      = data.students;
-      userAccounts  = data.userAccounts  || [];
-      tasks         = data.tasks         || tasks;
-      taskProgress  = data.taskProgress  || {};
-      nextSid       = data.nextSid       || 6;
-      nextSrcId     = data.nextSrcId     || 4;
+    // Always restore if we have saved data — even if empty arrays
+    if(data && data.version){
+      if(Array.isArray(data.students))     students     = data.students;
+      if(Array.isArray(data.userAccounts)) userAccounts = data.userAccounts;
+      if(Array.isArray(data.tasks) && data.tasks.length) tasks = data.tasks;
+      if(data.taskProgress)  taskProgress = data.taskProgress;
+      if(data.nextSid)       nextSid      = data.nextSid;
+      if(data.nextSrcId)     nextSrcId    = data.nextSrcId;
       return true;
     }
     return false;
@@ -2421,10 +2423,14 @@ async function fbSaveFeedback(studentFbId,taskId,score,feedback,rewards){
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
-  // Load persisted data first — restores students, tasks, progress across sessions
+  // Load persisted data — restores students, tasks, progress across sessions
   const loaded = loadFromStorage();
   if(loaded){
-    console.log('✅ Data restored from storage: '+students.length+' students, '+tasks.length+' tasks');
+    console.log('✅ Data restored: '+students.length+' students, '+tasks.length+' tasks, '+userAccounts.length+' accounts');
+  } else {
+    // First ever load — save the default demo data so it persists
+    saveToStorage();
+    console.log('✅ Initial data saved to storage');
   }
   updateSrcFields();
   updateLoginHint();
